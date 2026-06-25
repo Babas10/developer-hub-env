@@ -41,7 +41,7 @@ data:
           default:
             # Internal K8s service URL — server-to-server, always the same across clusters.
             baseUrl: "http://rhdh-keycloak-service.keycloak.svc.cluster.local:8080"
-            loginRealm: master
+            loginRealm: rhdh
             realm: rhdh
             clientId: "${KEYCLOAK_CLIENT_ID}"
             clientSecret: "${KEYCLOAK_CLIENT_SECRET}"

@@ -26,6 +26,7 @@ spec:
         standardFlowEnabled: true
         implicitFlowEnabled: false
         directAccessGrantsEnabled: false
+        serviceAccountsEnabled: true
         clientAuthenticatorType: client-secret
         secret: "72e5eb27f47b902662132592d680e62e55fff5a42d1a056e"
         redirectUris:

@@ -201,6 +201,77 @@
       tags: keycloak-users
 
     # -------------------------------------------------------------------------
+    # Enable service account on developer-hub client (for catalog sync)
+    # -------------------------------------------------------------------------
+    - name: Get developer-hub client details
+      ansible.builtin.uri:
+        url: "{{ keycloak_host }}/admin/realms/rhdh/clients?clientId=developer-hub"
+        method: GET
+        headers:
+          Authorization: "Bearer {{ keycloak_admin_token }}"
+        validate_certs: false
+        status_code: [200]
+      register: dh_client_result
+      tags: keycloak-service-account
+
+    - name: Enable service accounts on developer-hub client
+      ansible.builtin.uri:
+        url: "{{ keycloak_host }}/admin/realms/rhdh/clients/{{ dh_client_result.json[0].id }}"
+        method: PUT
+        body_format: json
+        body: "{{ dh_client_result.json[0] | combine({'serviceAccountsEnabled': true}) }}"
+        headers:
+          Authorization: "Bearer {{ keycloak_admin_token }}"
+        validate_certs: false
+        status_code: [204]
+      tags: keycloak-service-account
+
+    - name: Get developer-hub service account user
+      ansible.builtin.uri:
+        url: "{{ keycloak_host }}/admin/realms/rhdh/clients/{{ dh_client_result.json[0].id }}/service-account-user"
+        method: GET
+        headers:
+          Authorization: "Bearer {{ keycloak_admin_token }}"
+        validate_certs: false
+        status_code: [200]
+      register: sa_user_result
+      tags: keycloak-service-account
+
+    - name: Get realm-management client
+      ansible.builtin.uri:
+        url: "{{ keycloak_host }}/admin/realms/rhdh/clients?clientId=realm-management"
+        method: GET
+        headers:
+          Authorization: "Bearer {{ keycloak_admin_token }}"
+        validate_certs: false
+        status_code: [200]
+      register: realm_mgmt_client_result
+      tags: keycloak-service-account
+
+    - name: Get realm-management client roles
+      ansible.builtin.uri:
+        url: "{{ keycloak_host }}/admin/realms/rhdh/clients/{{ realm_mgmt_client_result.json[0].id }}/roles"
+        method: GET
+        headers:
+          Authorization: "Bearer {{ keycloak_admin_token }}"
+        validate_certs: false
+        status_code: [200]
+      register: realm_mgmt_roles_result
+      tags: keycloak-service-account
+
+    - name: Assign view-users/query-users/query-groups roles to service account
+      ansible.builtin.uri:
+        url: "{{ keycloak_host }}/admin/realms/rhdh/users/{{ sa_user_result.json.id }}/role-mappings/clients/{{ realm_mgmt_client_result.json[0].id }}"
+        method: POST
+        body_format: json
+        body: "{{ realm_mgmt_roles_result.json | selectattr('name', 'in', ['view-users', 'query-users', 'query-groups', 'view-groups']) | list }}"
+        headers:
+          Authorization: "Bearer {{ keycloak_admin_token }}"
+        validate_certs: false
+        status_code: [204]
+      tags: keycloak-service-account
+
+    # -------------------------------------------------------------------------
     # Revoke token
     # -------------------------------------------------------------------------
     - name: Revoke OpenShift OAuth token
