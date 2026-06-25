@@ -28,7 +28,7 @@ spec:
     spec:
       containers:
         - name: postgres
-          image: docker.io/bitnami/postgresql:15
+          image: registry.redhat.io/rhel9/postgresql-15:latest
           ports:
             - containerPort: 5432
           env:
@@ -46,7 +46,7 @@ spec:
               value: keycloak
           volumeMounts:
             - name: data
-              mountPath: /bitnami/postgresql
+              mountPath: /var/lib/pgsql/data
       volumes:
         - name: data
           persistentVolumeClaim:
