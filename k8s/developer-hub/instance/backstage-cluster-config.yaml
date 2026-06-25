@@ -8,4 +8,4 @@ metadata:
   namespace: developer-hub
 data:
   KEYCLOAK_BASE_URL: "https://rhdh-keycloak-keycloak.apps.ocp.56jg7.sandbox3439.opentlc.com/realms/rhdh"
-  ARGOCD_INSTANCE_URL: "https://openshift-gitops-server-openshift-gitops.apps.ocp.56jg7.sandbox3439.opentlc.com"
+  ARGOCD_INSTANCE1_URL: "https://openshift-gitops-server-openshift-gitops.apps.ocp.56jg7.sandbox3439.opentlc.com"
