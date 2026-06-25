@@ -2,7 +2,7 @@
 # KeycloakRealmImport — configures the 'rhdh' realm with the Developer Hub OIDC client.
 # The client secret below matches the KEYCLOAK_CLIENT_SECRET sealed in backstage-secrets.
 # redirectUris uses a wildcard to support ephemeral clusters with changing domains.
-apiVersion: k8s.keycloak.org/v2beta1
+apiVersion: k8s.keycloak.org/v2alpha1
 kind: KeycloakRealmImport
 metadata:
   name: rhdh-realm
