@@ -21,16 +21,14 @@ data:
       environment: production
       session:
         secret: "${SESSION_SECRET}"
+      signInPage: oidc
       providers:
         oidc:
           production:
-            # KEYCLOAK_BASE_URL is injected at post-install time into backstage-cluster-config secret.
-            # Format: https://<keycloak-route>/realms/rhdh
             metadataUrl: "${KEYCLOAK_BASE_URL}/.well-known/openid-configuration"
             clientId: "${KEYCLOAK_CLIENT_ID}"
             clientSecret: "${KEYCLOAK_CLIENT_SECRET}"
             prompt: auto
-            signInPage: oidc
             signIn:
               resolvers:
                 - resolver: preferredUsernameMatchingUserEntityName
