@@ -57,6 +57,15 @@ data:
               serviceAccountToken: "${K8S_SERVICE_ACCOUNT_TOKEN}"
 
     catalog:
+      locations:
+        - type: url
+          target: https://github.com/Babas10/developer-hub-env/blob/main/catalog/demo-stopwatch.yaml
+          rules:
+            - allow: [Component]
+        - type: url
+          target: https://github.com/Babas10/developer-hub-env/blob/main/catalog/demo-todo.yaml
+          rules:
+            - allow: [Component]
       providers:
         keycloakOrg:
           default:

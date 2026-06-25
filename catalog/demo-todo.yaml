@@ -1,0 +1,14 @@
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: demo-todo
+  title: Demo Todo
+  description: A simple todo demo application deployed via ArgoCD.
+  annotations:
+    argocd/app-name: demo-todo
+    backstage.io/source-location: url:https://github.com/Babas10/demo-todo
+spec:
+  type: website
+  lifecycle: experimental
+  owner: user:default/admin
