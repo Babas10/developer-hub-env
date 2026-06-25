@@ -36,18 +36,3 @@ data:
                 - resolver: preferredUsernameMatchingUserEntityName
                 - resolver: emailMatchingUserEntityProfileEmail
 
-    catalog:
-      providers:
-        keycloakOrg:
-          default:
-            # Internal K8s service URL — server-to-server, always the same regardless of cluster.
-            # The operator creates the service named keycloak-service in the keycloak namespace.
-            baseUrl: "http://keycloak-service.keycloak.svc.cluster.local:8080"
-            loginRealm: master
-            realm: rhdh
-            clientId: "${KEYCLOAK_CLIENT_ID}"
-            clientSecret: "${KEYCLOAK_CLIENT_SECRET}"
-            schedule:
-              frequency: { minutes: 30 }
-              timeout: { minutes: 3 }
-              initialDelay: { seconds: 30 }
