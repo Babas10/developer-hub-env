@@ -41,7 +41,8 @@ data:
           instances:
             - name: default
               url: "${ARGOCD_INSTANCE_URL}"
-              token: "${ARGOCD_AUTH_TOKEN}"
+              username: "${ARGOCD_USERNAME}"
+              password: "${ARGOCD_PASSWORD}"
 
     kubernetes:
       serviceLocatorMethod:

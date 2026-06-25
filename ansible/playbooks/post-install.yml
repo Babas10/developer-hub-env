@@ -272,6 +272,75 @@
       tags: keycloak-service-account
 
     # -------------------------------------------------------------------------
+    # Set ArgoCD rhdh account password
+    # Requires the rhdh account to exist (ArgoCD CR must be synced first).
+    # argocd_rhdh_password must be defined in vault.yml.
+    # Usage: --tags argocd-user
+    # -------------------------------------------------------------------------
+    - name: Get ArgoCD route
+      kubernetes.core.k8s_info:
+        host: "{{ ocp_api_url }}"
+        api_key: "{{ k8s_api_key }}"
+        validate_certs: false
+        api_version: route.openshift.io/v1
+        kind: Route
+        name: openshift-gitops-server
+        namespace: openshift-gitops
+      register: argocd_route
+      tags: argocd-user
+
+    - name: Get ArgoCD admin password from openshift-gitops-cluster secret
+      kubernetes.core.k8s_info:
+        host: "{{ ocp_api_url }}"
+        api_key: "{{ k8s_api_key }}"
+        validate_certs: false
+        api_version: v1
+        kind: Secret
+        name: openshift-gitops-cluster
+        namespace: openshift-gitops
+      register: argocd_admin_secret
+      tags: argocd-user
+
+    - name: Set ArgoCD facts
+      ansible.builtin.set_fact:
+        argocd_host: "https://{{ argocd_route.resources[0].spec.host }}"
+        argocd_admin_password: "{{ argocd_admin_secret.resources[0].data['admin.password'] | b64decode }}"
+      tags: argocd-user
+
+    - name: Login to ArgoCD as admin
+      ansible.builtin.uri:
+        url: "{{ argocd_host }}/api/v1/session"
+        method: POST
+        body_format: json
+        body:
+          username: admin
+          password: "{{ argocd_admin_password }}"
+        validate_certs: false
+        status_code: [200]
+      register: argocd_session
+      tags: argocd-user
+
+    - name: Set ArgoCD session token
+      ansible.builtin.set_fact:
+        argocd_token: "{{ argocd_session.json.token }}"
+      tags: argocd-user
+
+    - name: Set rhdh account password
+      ansible.builtin.uri:
+        url: "{{ argocd_host }}/api/v1/account/password"
+        method: PUT
+        body_format: json
+        body:
+          name: rhdh
+          currentPassword: "{{ argocd_admin_password }}"
+          newPassword: "{{ argocd_rhdh_password }}"
+        headers:
+          Authorization: "Bearer {{ argocd_token }}"
+        validate_certs: false
+        status_code: [200]
+      tags: argocd-user
+
+    # -------------------------------------------------------------------------
     # Revoke token
     # -------------------------------------------------------------------------
     - name: Revoke OpenShift OAuth token

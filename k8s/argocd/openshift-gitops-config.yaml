@@ -11,7 +11,7 @@ spec:
   extraConfig:
     # Local account for the RHDH ArgoCD plugin.
     # Read-only, scoped to the apps-demo project only.
-    accounts.rhdh: apiKey
+    accounts.rhdh: apiKey, login
 
   rbac:
     defaultPolicy: ""
