@@ -4,6 +4,8 @@ kind: Application
 metadata:
   name: demo-stopwatch
   namespace: openshift-gitops
+  labels:
+    app: demo-stopwatch
   annotations:
     argocd.argoproj.io/sync-wave: "5"
 spec:

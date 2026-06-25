@@ -4,6 +4,8 @@ kind: Application
 metadata:
   name: demo-todo
   namespace: openshift-gitops
+  labels:
+    app: demo-todo
   annotations:
     argocd.argoproj.io/sync-wave: "5"
 spec:

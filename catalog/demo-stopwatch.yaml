@@ -6,7 +6,7 @@ metadata:
   title: Demo Stopwatch
   description: A simple stopwatch demo application deployed via ArgoCD.
   annotations:
-    argocd/app-name: demo-stopwatch
+    argocd/app-selector: 'app=demo-stopwatch'
     backstage.io/source-location: url:https://github.com/Babas10/demo-stopwatch
 spec:
   type: website
