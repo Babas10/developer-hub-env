@@ -36,3 +36,19 @@ data:
                 - resolver: preferredUsernameMatchingUserEntityName
                 - resolver: emailMatchingUserEntityProfileEmail
 
+    catalog:
+      providers:
+        keycloakOrg:
+          default:
+            # Internal K8s service URL — server-to-server, always the same across clusters.
+            # rhdh-keycloak-service is created by the RHBK operator for our rhdh-keycloak CR.
+            baseUrl: "http://rhdh-keycloak-service.keycloak.svc.cluster.local:8080"
+            loginRealm: master
+            realm: rhdh
+            clientId: "${KEYCLOAK_CLIENT_ID}"
+            clientSecret: "${KEYCLOAK_CLIENT_SECRET}"
+            schedule:
+              frequency: { minutes: 30 }
+              timeout: { minutes: 3 }
+              initialDelay: { seconds: 30 }
+

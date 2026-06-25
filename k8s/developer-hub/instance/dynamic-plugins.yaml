@@ -12,4 +12,6 @@ data:
   dynamic-plugins.yaml: |
     includes:
       - dynamic-plugins.default.yaml
-    plugins: []
+    plugins:
+      - package: oci://registry.redhat.io/rhdh/backstage-plugin-catalog-backend-module-keycloak-dynamic:{{inherit}}
+        disabled: false
