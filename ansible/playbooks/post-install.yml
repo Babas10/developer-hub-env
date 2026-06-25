@@ -1,0 +1,259 @@
+---
+# Post-install playbook — runs AFTER ArgoCD has fully synced all waves.
+# Responsibilities:
+#   1. Wait for Keycloak route to be available
+#   2. Create backstage-cluster-config secret with KEYCLOAK_BASE_URL
+#   3. Create Keycloak users via admin API
+#
+# Usage:
+#   ansible-playbook ansible/playbooks/post-install.yml \
+#     --vault-password-file ansible/vault_pass \
+#     -e ocp_api_url=$OCP_API \
+#     -e ocp_token=$(oc whoami --show-token)
+
+- name: Post-install configuration for Developer Hub
+  hosts: localhost
+  gather_facts: false
+
+  vars:
+    ocp_api_url: "{{ lookup('env', 'OCP_API') }}"
+    ocp_token: ""
+    # Derive OAuth server URL from API URL
+    ocp_oauth_url: "{{ ocp_api_url | regex_replace('https://api\\.(.+?):\\d+$', 'https://oauth-openshift.apps.\\1') }}"
+
+    keycloak_users:
+      - username: admin
+        password: "{{ keycloak_admin_password }}"
+        firstName: Admin
+        lastName: User
+        email: admin@developer-hub.local
+        roles:
+          - developer-hub-admin
+          - developer-hub-user
+      - username: developer1
+        password: "{{ keycloak_developer_password }}"
+        firstName: Developer
+        lastName: One
+        email: developer1@developer-hub.local
+        roles:
+          - developer-hub-user
+      - username: developer2
+        password: "{{ keycloak_developer_password }}"
+        firstName: Developer
+        lastName: Two
+        email: developer2@developer-hub.local
+        roles:
+          - developer-hub-user
+
+  tasks:
+    # -------------------------------------------------------------------------
+    # Authenticate — OAuth flow or pre-existing token
+    # -------------------------------------------------------------------------
+    - name: Request OpenShift OAuth token
+      ansible.builtin.uri:
+        url: "{{ ocp_oauth_url }}/oauth/authorize?response_type=token&client_id=openshift-challenging-client"
+        method: GET
+        url_username: "{{ ocp_username }}"
+        url_password: "{{ ocp_password }}"
+        force_basic_auth: true
+        validate_certs: false
+        follow_redirects: "none"
+        headers:
+          X-CSRF-Token: "1"
+        status_code: [302]
+      register: oauth_response
+      when: ocp_token == ""
+      tags: always
+
+    - name: Set token from OAuth redirect
+      ansible.builtin.set_fact:
+        k8s_api_key: "{{ oauth_response.location | regex_search('access_token=([^&]+)', '\\1') | first }}"
+      when: ocp_token == ""
+      tags: always
+
+    - name: Set token from provided ocp_token
+      ansible.builtin.set_fact:
+        k8s_api_key: "{{ ocp_token }}"
+      when: ocp_token != ""
+      tags: always
+
+    # -------------------------------------------------------------------------
+    # Wait for Keycloak route
+    # -------------------------------------------------------------------------
+    - name: Wait for Keycloak route to be available
+      kubernetes.core.k8s_info:
+        host: "{{ ocp_api_url }}"
+        api_key: "{{ k8s_api_key }}"
+        validate_certs: false
+        api_version: route.openshift.io/v1
+        kind: Route
+        namespace: keycloak
+        label_selectors:
+          - app=keycloak
+      register: keycloak_route
+      until:
+        - keycloak_route.resources | length > 0
+        - keycloak_route.resources[0].spec.host is defined
+      retries: 30
+      delay: 20
+      tags: keycloak-config
+
+    - name: Set Keycloak base URL fact
+      ansible.builtin.set_fact:
+        keycloak_base_url: "https://{{ keycloak_route.resources[0].spec.host }}/realms/rhdh"
+      tags: keycloak-config
+
+    # -------------------------------------------------------------------------
+    # Create backstage-cluster-config secret with KEYCLOAK_BASE_URL
+    # -------------------------------------------------------------------------
+    - name: Create backstage-cluster-config secret
+      kubernetes.core.k8s:
+        host: "{{ ocp_api_url }}"
+        api_key: "{{ k8s_api_key }}"
+        validate_certs: false
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: backstage-cluster-config
+            namespace: developer-hub
+          stringData:
+            KEYCLOAK_BASE_URL: "{{ keycloak_base_url }}"
+      tags: keycloak-config
+
+    # -------------------------------------------------------------------------
+    # Create Keycloak users via admin API
+    # -------------------------------------------------------------------------
+    - name: Get Keycloak route for admin API
+      kubernetes.core.k8s_info:
+        host: "{{ ocp_api_url }}"
+        api_key: "{{ k8s_api_key }}"
+        validate_certs: false
+        api_version: route.openshift.io/v1
+        kind: Route
+        namespace: keycloak
+        label_selectors:
+          - app=keycloak
+      register: keycloak_route_users
+      tags: keycloak-users
+
+    - name: Get Keycloak initial admin secret
+      kubernetes.core.k8s_info:
+        host: "{{ ocp_api_url }}"
+        api_key: "{{ k8s_api_key }}"
+        validate_certs: false
+        api_version: v1
+        kind: Secret
+        name: keycloak-initial-admin
+        namespace: keycloak
+      register: keycloak_admin_secret
+      tags: keycloak-users
+
+    - name: Set Keycloak admin credentials
+      ansible.builtin.set_fact:
+        keycloak_host: "https://{{ keycloak_route_users.resources[0].spec.host }}"
+        keycloak_admin_user: "{{ keycloak_admin_secret.resources[0].data.username | b64decode }}"
+        keycloak_admin_pass: "{{ keycloak_admin_secret.resources[0].data.password | b64decode }}"
+      tags: keycloak-users
+
+    - name: Get Keycloak admin token
+      ansible.builtin.uri:
+        url: "{{ keycloak_host }}/realms/master/protocol/openid-connect/token"
+        method: POST
+        body_format: form-urlencoded
+        body:
+          grant_type: password
+          client_id: admin-cli
+          username: "{{ keycloak_admin_user }}"
+          password: "{{ keycloak_admin_pass }}"
+        validate_certs: false
+        status_code: [200]
+      register: keycloak_token_response
+      tags: keycloak-users
+
+    - name: Set Keycloak admin token fact
+      ansible.builtin.set_fact:
+        keycloak_admin_token: "{{ keycloak_token_response.json.access_token }}"
+      tags: keycloak-users
+
+    - name: Create Keycloak users
+      ansible.builtin.uri:
+        url: "{{ keycloak_host }}/admin/realms/rhdh/users"
+        method: POST
+        body_format: json
+        body:
+          username: "{{ item.username }}"
+          firstName: "{{ item.firstName }}"
+          lastName: "{{ item.lastName }}"
+          email: "{{ item.email }}"
+          enabled: true
+          credentials:
+            - type: password
+              value: "{{ item.password }}"
+              temporary: false
+        headers:
+          Authorization: "Bearer {{ keycloak_admin_token }}"
+        validate_certs: false
+        status_code: [201, 409]
+      loop: "{{ keycloak_users }}"
+      loop_control:
+        label: "{{ item.username }}"
+      register: user_create_results
+      tags: keycloak-users
+
+    - name: Get created user IDs
+      ansible.builtin.uri:
+        url: "{{ keycloak_host }}/admin/realms/rhdh/users?username={{ item.username }}&exact=true"
+        method: GET
+        headers:
+          Authorization: "Bearer {{ keycloak_admin_token }}"
+        validate_certs: false
+        status_code: [200]
+      loop: "{{ keycloak_users }}"
+      loop_control:
+        label: "{{ item.username }}"
+      register: user_lookup_results
+      tags: keycloak-users
+
+    - name: Get realm role IDs
+      ansible.builtin.uri:
+        url: "{{ keycloak_host }}/admin/realms/rhdh/roles"
+        method: GET
+        headers:
+          Authorization: "Bearer {{ keycloak_admin_token }}"
+        validate_certs: false
+        status_code: [200]
+      register: realm_roles
+      tags: keycloak-users
+
+    - name: Assign realm roles to users
+      ansible.builtin.uri:
+        url: "{{ keycloak_host }}/admin/realms/rhdh/users/{{ user_lookup_results.results[user_idx].json[0].id }}/role-mappings/realm"
+        method: POST
+        body_format: json
+        body: "{{ realm_roles.json | selectattr('name', 'in', item.roles) | list }}"
+        headers:
+          Authorization: "Bearer {{ keycloak_admin_token }}"
+        validate_certs: false
+        status_code: [204]
+      loop: "{{ keycloak_users }}"
+      loop_control:
+        index_var: user_idx
+        label: "{{ item.username }}"
+      when: user_lookup_results.results[user_idx].json | length > 0
+      tags: keycloak-users
+
+    # -------------------------------------------------------------------------
+    # Revoke token
+    # -------------------------------------------------------------------------
+    - name: Revoke OpenShift OAuth token
+      ansible.builtin.uri:
+        url: "{{ ocp_oauth_url }}/oauth/token/{{ k8s_api_key }}"
+        method: DELETE
+        validate_certs: false
+        headers:
+          Authorization: "Bearer {{ k8s_api_key }}"
+        status_code: [200, 201, 204, 404]
+      when: k8s_api_key is defined and ocp_token == ""
+      tags: always

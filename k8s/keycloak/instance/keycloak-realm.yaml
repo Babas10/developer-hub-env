@@ -2,7 +2,7 @@
 # KeycloakRealmImport — configures the 'rhdh' realm with the Developer Hub OIDC client.
 # The client secret below matches the KEYCLOAK_CLIENT_SECRET sealed in backstage-secrets.
 # redirectUris uses a wildcard to support ephemeral clusters with changing domains.
-apiVersion: k8s.keycloak.org/v2alpha1
+apiVersion: k8s.keycloak.org/v2beta1
 kind: KeycloakRealmImport
 metadata:
   name: rhdh-realm
@@ -40,44 +40,5 @@ spec:
           description: Standard Developer Hub user
         - name: developer-hub-admin
           description: Developer Hub administrator
-    # Dev users — passwords are plain text here and hashed by Keycloak on import.
-    # Acceptable for ephemeral dev clusters. Rotate for any shared/long-lived environment.
-    users:
-      - username: etienne
-        email: etienne@redhat.com
-        firstName: Etienne
-        lastName: Dubois
-        enabled: true
-        emailVerified: true
-        credentials:
-          - type: password
-            value: "rhdh-admin-2026"
-            temporary: false
-        realmRoles:
-          - developer-hub-admin
-
-      - username: developer1
-        email: developer1@redhat.com
-        firstName: Developer
-        lastName: One
-        enabled: true
-        emailVerified: true
-        credentials:
-          - type: password
-            value: "rhdh-dev-2026"
-            temporary: false
-        realmRoles:
-          - developer-hub-user
-
-      - username: developer2
-        email: developer2@redhat.com
-        firstName: Developer
-        lastName: Two
-        enabled: true
-        emailVerified: true
-        credentials:
-          - type: password
-            value: "rhdh-dev-2026"
-            temporary: false
-        realmRoles:
-          - developer-hub-user
+    # Note: RHBK operator v26 does not import users via KeycloakRealmImport.
+    # Users are created by the bootstrap playbook via the Keycloak admin API.
