@@ -17,6 +17,8 @@ data:
               subject: legacy-default-config
               secret: "${BACKEND_SECRET}"
 
+    signInPage: oidc
+
     auth:
       environment: production
       session:
@@ -28,7 +30,6 @@ data:
             clientId: "${KEYCLOAK_CLIENT_ID}"
             clientSecret: "${KEYCLOAK_CLIENT_SECRET}"
             prompt: auto
-            signInPage: oidc
             signIn:
               resolvers:
                 - resolver: preferredUsernameMatchingUserEntityName
