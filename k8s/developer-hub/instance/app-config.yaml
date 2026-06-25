@@ -21,7 +21,6 @@ data:
       environment: production
       session:
         secret: "${SESSION_SECRET}"
-      signInPage: oidc
       providers:
         oidc:
           production:
@@ -29,6 +28,7 @@ data:
             clientId: "${KEYCLOAK_CLIENT_ID}"
             clientSecret: "${KEYCLOAK_CLIENT_SECRET}"
             prompt: auto
+            signInPage: oidc
             signIn:
               resolvers:
                 - resolver: preferredUsernameMatchingUserEntityName
