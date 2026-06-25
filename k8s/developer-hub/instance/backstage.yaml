@@ -1,0 +1,37 @@
+---
+# Red Hat Developer Hub instance.
+# Managed by the rhdh operator (rhdh.redhat.com/v1alpha3).
+# The operator provisions the Backstage deployment, Service, and Route automatically.
+apiVersion: rhdh.redhat.com/v1alpha3
+kind: Backstage
+metadata:
+  name: developer-hub
+  namespace: developer-hub
+spec:
+  application:
+    # Application configuration from ConfigMap
+    appConfig:
+      mountPath: /opt/app-root/src
+      configMaps:
+        - name: app-config-rhdh
+
+    # Dynamic plugins configuration
+    dynamicPluginsConfigMapName: dynamic-plugins-rhdh
+
+    # Secret with all sensitive values referenced in app-config.yaml
+    # Sealed in backstage-secrets-sealed.yaml — keys become env vars.
+    extraEnvs:
+      secrets:
+        - name: backstage-secrets
+
+    # Number of replicas (1 for sandbox/dev environments)
+    replicas: 1
+
+    # OpenShift Route — auto-provisioned by the operator
+    route:
+      enabled: true
+
+  # Database — operator provisions PostgreSQL by default
+  # Override here if you want to use an external DB
+  database:
+    enableLocalDb: true

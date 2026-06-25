@@ -1,0 +1,47 @@
+---
+# Ansible Vault encrypted variables — DO NOT commit this file unencrypted.
+#
+# This project reuses the same Sealed Secrets TLS key pair as devops-ai-agentic.
+# Copy the values from that project's vault.yml (after decrypting it).
+#
+# SETUP (one-time, shared key pair):
+#
+#   If the key pair already exists in devops-ai-agentic:
+#     1. Decrypt the vault in devops-ai-agentic:
+#          ansible-vault decrypt ansible/inventory/group_vars/all/vault.yml \
+#            --vault-password-file ansible/vault_pass
+#     2. Copy sealed_secrets_tls_crt and sealed_secrets_tls_key values here.
+#     3. Re-encrypt the devops-ai-agentic vault.
+#
+#   If you need to generate a new key pair:
+#     1. Generate:
+#          openssl req -x509 -nodes -newkey rsa:4096 \
+#            -keyout /tmp/sealed-secrets-tls.key \
+#            -out /tmp/sealed-secrets-tls.crt \
+#            -subj "/CN=sealed-secret/O=sealed-secret" \
+#            -days 3650
+#     2. Fill values below.
+#
+#   3. Copy this file and fill in:
+#        cp ansible/inventory/group_vars/all/vault.yml.example \
+#           ansible/inventory/group_vars/all/vault.yml
+#
+#   4. Encrypt and commit:
+#        ansible-vault encrypt ansible/inventory/group_vars/all/vault.yml
+#        git add ansible/inventory/group_vars/all/vault.yml
+#
+# USAGE:
+#   ansible-playbook ansible/playbooks/bootstrap.yml \
+#     --vault-password-file ansible/vault_pass \
+#     -e ocp_api_url=$OCP_API \
+#     -e ocp_username=$OCP_USER \
+#     -e ocp_password=$OCP_PASS
+
+sealed_secrets_tls_crt: |
+  -----BEGIN CERTIFICATE-----
+  <paste the contents of sealed-secrets-tls.crt here>
+  -----END CERTIFICATE-----
+sealed_secrets_tls_key: |
+  -----BEGIN PRIVATE KEY-----
+  <paste the contents of sealed-secrets-tls.key here>
+  -----END PRIVATE KEY-----

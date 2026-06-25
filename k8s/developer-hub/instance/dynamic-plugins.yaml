@@ -1,0 +1,72 @@
+---
+# Dynamic plugins configuration for Red Hat Developer Hub.
+# The RHDH operator reads this ConfigMap to enable/disable plugins at startup.
+# Plugin packages ship pre-bundled in the RHDH image — only enable/disable here.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dynamic-plugins-rhdh
+  namespace: developer-hub
+data:
+  dynamic-plugins.yaml: |
+    includes:
+      - dynamic-plugins.default.yaml
+    plugins:
+      # -----------------------------------------------------------------------
+      # GitHub integration plugins
+      # -----------------------------------------------------------------------
+      - package: ./dynamic-plugins/dist/backstage-plugin-catalog-backend-module-github-dynamic
+        disabled: false
+
+      - package: ./dynamic-plugins/dist/backstage-plugin-github-actions
+        disabled: false
+
+      - package: ./dynamic-plugins/dist/backstage-plugin-github-issues
+        disabled: false
+
+      # -----------------------------------------------------------------------
+      # Kubernetes / OpenShift topology plugins
+      # -----------------------------------------------------------------------
+      - package: ./dynamic-plugins/dist/backstage-plugin-kubernetes-backend-dynamic
+        disabled: false
+
+      - package: ./dynamic-plugins/dist/backstage-plugin-kubernetes
+        disabled: false
+
+      - package: ./dynamic-plugins/dist/janus-idp-backstage-plugin-topology
+        disabled: false
+
+      # -----------------------------------------------------------------------
+      # OpenShift Pipelines (Tekton) plugin
+      # -----------------------------------------------------------------------
+      - package: ./dynamic-plugins/dist/janus-idp-backstage-plugin-tekton
+        disabled: false
+
+      # -----------------------------------------------------------------------
+      # ArgoCD plugin
+      # -----------------------------------------------------------------------
+      - package: ./dynamic-plugins/dist/roadiehq-backstage-plugin-argo-cd-backend-dynamic
+        disabled: false
+        pluginConfig:
+          argocd:
+            appLocatorMethods:
+              - type: config
+                instances:
+                  - name: argocd
+                    url: https://openshift-gitops-server-openshift-gitops.apps.${OCP_CLUSTER_DOMAIN}
+                    token: "${ARGOCD_TOKEN}"
+
+      - package: ./dynamic-plugins/dist/roadiehq-backstage-plugin-argo-cd
+        disabled: false
+
+      # -----------------------------------------------------------------------
+      # Quay container registry plugin
+      # -----------------------------------------------------------------------
+      - package: ./dynamic-plugins/dist/janus-idp-backstage-plugin-quay
+        disabled: false
+
+      # -----------------------------------------------------------------------
+      # RBAC plugin (Developer Hub permission framework)
+      # -----------------------------------------------------------------------
+      - package: ./dynamic-plugins/dist/janus-idp-backstage-plugin-rbac
+        disabled: false
