@@ -43,21 +43,13 @@ data:
         disabled: false
 
       # -----------------------------------------------------------------------
-      # ArgoCD plugin
+      # ArgoCD plugin — disabled for now (token is cluster-specific)
       # -----------------------------------------------------------------------
       - package: ./dynamic-plugins/dist/roadiehq-backstage-plugin-argo-cd-backend-dynamic
-        disabled: false
-        pluginConfig:
-          argocd:
-            appLocatorMethods:
-              - type: config
-                instances:
-                  - name: argocd
-                    url: https://openshift-gitops-server-openshift-gitops.apps.${OCP_CLUSTER_DOMAIN}
-                    token: "${ARGOCD_TOKEN}"
+        disabled: true
 
       - package: ./dynamic-plugins/dist/roadiehq-backstage-plugin-argo-cd
-        disabled: false
+        disabled: true
 
       # -----------------------------------------------------------------------
       # Quay container registry plugin
