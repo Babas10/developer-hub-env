@@ -8,7 +8,7 @@ metadata:
   name: rhdh-realm
   namespace: keycloak
 spec:
-  keycloakCRName: keycloak
+  keycloakCRName: rhdh-keycloak
   realm:
     realm: rhdh
     displayName: Developer Hub

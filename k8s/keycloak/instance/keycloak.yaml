@@ -2,13 +2,13 @@
 apiVersion: k8s.keycloak.org/v2beta1
 kind: Keycloak
 metadata:
-  name: keycloak
+  name: rhdh-keycloak
   namespace: keycloak
 spec:
   instances: 1
   db:
     vendor: postgres
-    host: keycloak-postgres
+    host: rhdh-keycloak-postgres
     port: 5432
     database: keycloak
     usernameSecret:

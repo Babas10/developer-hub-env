@@ -231,7 +231,7 @@
     # -------------------------------------------------------------------------
     - name: Derive Keycloak base URL from cluster API URL
       ansible.builtin.set_fact:
-        keycloak_base_url: "{{ ocp_api_url | regex_replace('https://api\\.(.+?):\\d+$', 'https://keycloak-keycloak.apps.\\1') }}/realms/rhdh"
+        keycloak_base_url: "{{ ocp_api_url | regex_replace('https://api\\.(.+?):\\d+$', 'https://rhdh-keycloak-keycloak.apps.\\1') }}/realms/rhdh"
       tags: argocd-apps
 
     - name: Write backstage-cluster-config ConfigMap
