@@ -18,7 +18,20 @@ data:
               secret: "${BACKEND_SECRET}"
 
     auth:
-      environment: development
+      environment: production
+      session:
+        secret: "${SESSION_SECRET}"
       providers:
-        guest:
-          dangerouslyAllowOutsideDevelopment: true
+        oidc:
+          production:
+            # KEYCLOAK_BASE_URL is injected at bootstrap time into backstage-cluster-config secret.
+            # Format: https://<keycloak-route>/realms/rhdh
+            metadataUrl: "${KEYCLOAK_BASE_URL}/.well-known/openid-configuration"
+            clientId: "${KEYCLOAK_CLIENT_ID}"
+            clientSecret: "${KEYCLOAK_CLIENT_SECRET}"
+            prompt: auto
+            signInPage: oidc
+            signIn:
+              resolvers:
+                - resolver: preferredUsernameMatchingUserEntityName
+                - resolver: emailMatchingUserEntityProfileEmail

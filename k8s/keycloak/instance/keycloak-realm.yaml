@@ -1,0 +1,42 @@
+---
+# KeycloakRealmImport — configures the 'rhdh' realm with the Developer Hub OIDC client.
+# The client secret below matches the KEYCLOAK_CLIENT_SECRET sealed in backstage-secrets.
+# redirectUris uses a wildcard to support ephemeral clusters with changing domains.
+apiVersion: k8s.keycloak.org/v2alpha1
+kind: KeycloakRealmImport
+metadata:
+  name: rhdh-realm
+  namespace: keycloak
+spec:
+  keycloakCRName: keycloak
+  realm:
+    realm: rhdh
+    displayName: Developer Hub
+    enabled: true
+    registrationAllowed: false
+    resetPasswordAllowed: true
+    rememberMe: true
+    clients:
+      - clientId: developer-hub
+        name: Developer Hub
+        description: OIDC client for Red Hat Developer Hub
+        enabled: true
+        protocol: openid-connect
+        publicClient: false
+        standardFlowEnabled: true
+        implicitFlowEnabled: false
+        directAccessGrantsEnabled: false
+        clientAuthenticatorType: client-secret
+        secret: "72e5eb27f47b902662132592d680e62e55fff5a42d1a056e"
+        redirectUris:
+          - "https://*"
+        webOrigins:
+          - "+"
+        attributes:
+          pkce.code.challenge.method: S256
+    roles:
+      realm:
+        - name: developer-hub-user
+          description: Standard Developer Hub user
+        - name: developer-hub-admin
+          description: Developer Hub administrator

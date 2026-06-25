@@ -15,6 +15,7 @@ spec:
     dynamicPluginsConfigMapName: dynamic-plugins-rhdh
     extraEnvs:
       secrets:
-        - name: backstage-secrets
+        - name: backstage-secrets         # static sealed: BACKEND_SECRET, SESSION_SECRET, KEYCLOAK_CLIENT_*
+        - name: backstage-cluster-config  # created by bootstrap: KEYCLOAK_BASE_URL
   database:
     enableLocalDb: true

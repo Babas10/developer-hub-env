@@ -242,6 +242,45 @@
       tags: argocd-apps
 
     # -------------------------------------------------------------------------
+    # Wait for Keycloak route and create backstage-cluster-config secret
+    # KEYCLOAK_BASE_URL is cluster-specific (route hostname changes per cluster)
+    # so it cannot be sealed in git — created here at bootstrap time instead.
+    # -------------------------------------------------------------------------
+    - name: Wait for Keycloak route to be available
+      kubernetes.core.k8s_info:
+        host: "{{ ocp_api_url }}"
+        api_key: "{{ k8s_api_key }}"
+        validate_certs: false
+        api_version: route.openshift.io/v1
+        kind: Route
+        name: keycloak
+        namespace: keycloak
+      register: keycloak_route
+      until:
+        - keycloak_route.resources | length > 0
+        - keycloak_route.resources[0].spec.host is defined
+      retries: 40
+      delay: 30
+      tags: keycloak-config
+
+    - name: Create backstage-cluster-config secret with Keycloak URL
+      kubernetes.core.k8s:
+        host: "{{ ocp_api_url }}"
+        api_key: "{{ k8s_api_key }}"
+        validate_certs: false
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: backstage-cluster-config
+            namespace: developer-hub
+          type: Opaque
+          stringData:
+            KEYCLOAK_BASE_URL: "https://{{ keycloak_route.resources[0].spec.host }}/realms/rhdh"
+      tags: keycloak-config
+
+    # -------------------------------------------------------------------------
     # Revoke token
     # -------------------------------------------------------------------------
     - name: Revoke OpenShift OAuth token
