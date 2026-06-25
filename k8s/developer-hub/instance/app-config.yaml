@@ -31,11 +31,24 @@ data:
             clientSecret: "${KEYCLOAK_CLIENT_SECRET}"
             prompt: auto
             signInPage: oidc
-            dangerouslyAllowSignInWithoutUserInCatalog: true
             signIn:
               resolvers:
                 - resolver: preferredUsernameMatchingUserEntityName
                 - resolver: emailMatchingUserEntityProfileEmail
+
+    catalog:
+      providers:
+        keycloakOrg:
+          default:
+            baseUrl: "http://rhdh-keycloak-service.keycloak.svc.cluster.local:8080"
+            loginRealm: master
+            realm: rhdh
+            clientId: "${KEYCLOAK_CLIENT_ID}"
+            clientSecret: "${KEYCLOAK_CLIENT_SECRET}"
+            schedule:
+              frequency: { minutes: 30 }
+              timeout: { minutes: 3 }
+              initialDelay: { seconds: 30 }
       providers:
         keycloakOrg:
           default:
