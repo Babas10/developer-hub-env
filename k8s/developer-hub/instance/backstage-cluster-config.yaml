@@ -9,3 +9,5 @@ metadata:
 data:
   KEYCLOAK_BASE_URL: "https://rhdh-keycloak-keycloak.apps.ocp.56jg7.sandbox3439.opentlc.com/realms/rhdh"
   ARGOCD_INSTANCE1_URL: "https://openshift-gitops-server-openshift-gitops.apps.ocp.56jg7.sandbox3439.opentlc.com"
+  K8S_CLUSTER_URL: "https://api.ocp.56jg7.sandbox3439.opentlc.com:6443"
+  K8S_CLUSTER_NAME: "ocp.56jg7.sandbox3439.opentlc.com"
