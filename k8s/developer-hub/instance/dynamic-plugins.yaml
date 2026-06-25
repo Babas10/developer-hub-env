@@ -36,10 +36,6 @@ data:
                   - path: /argo-cd
                     title: ArgoCD
                     mountPoint: entity.page.argocd
-                    config:
-                      if:
-                        allOf:
-                          - isArgocdAvailable
                 mountPoints:
                   - mountPoint: entity.page.argocd/cards
                     importName: EntityArgoCDOverviewCard
