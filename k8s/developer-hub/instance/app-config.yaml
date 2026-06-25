@@ -31,12 +31,11 @@ data:
             clientSecret: "${KEYCLOAK_CLIENT_SECRET}"
             prompt: auto
             signInPage: oidc
+            dangerouslyAllowSignInWithoutUserInCatalog: true
             signIn:
               resolvers:
                 - resolver: preferredUsernameMatchingUserEntityName
                 - resolver: emailMatchingUserEntityProfileEmail
-
-    catalog:
       providers:
         keycloakOrg:
           default:
