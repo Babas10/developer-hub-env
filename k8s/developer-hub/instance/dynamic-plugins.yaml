@@ -1,7 +1,8 @@
 ---
 # Dynamic plugins configuration for Red Hat Developer Hub.
-# The RHDH operator reads this ConfigMap to enable/disable plugins at startup.
-# Plugin packages ship pre-bundled in the RHDH image — only enable/disable here.
+# Uses the default plugin set bundled with the RHDH image.
+# Specific plugins will be enabled here once correct package references
+# are confirmed for this RHDH version.
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -11,54 +12,4 @@ data:
   dynamic-plugins.yaml: |
     includes:
       - dynamic-plugins.default.yaml
-    plugins:
-      # -----------------------------------------------------------------------
-      # GitHub integration plugins
-      # -----------------------------------------------------------------------
-      - package: ./dynamic-plugins/dist/backstage-plugin-catalog-backend-module-github-dynamic
-        disabled: false
-
-      - package: ./dynamic-plugins/dist/backstage-plugin-github-actions
-        disabled: false
-
-      - package: ./dynamic-plugins/dist/backstage-plugin-github-issues
-        disabled: false
-
-      # -----------------------------------------------------------------------
-      # Kubernetes / OpenShift topology plugins
-      # -----------------------------------------------------------------------
-      - package: ./dynamic-plugins/dist/backstage-plugin-kubernetes-backend-dynamic
-        disabled: false
-
-      - package: ./dynamic-plugins/dist/backstage-plugin-kubernetes
-        disabled: false
-
-      - package: ./dynamic-plugins/dist/janus-idp-backstage-plugin-topology
-        disabled: false
-
-      # -----------------------------------------------------------------------
-      # OpenShift Pipelines (Tekton) plugin
-      # -----------------------------------------------------------------------
-      - package: ./dynamic-plugins/dist/janus-idp-backstage-plugin-tekton
-        disabled: false
-
-      # -----------------------------------------------------------------------
-      # ArgoCD plugin — disabled for now (token is cluster-specific)
-      # -----------------------------------------------------------------------
-      - package: ./dynamic-plugins/dist/roadiehq-backstage-plugin-argo-cd-backend-dynamic
-        disabled: true
-
-      - package: ./dynamic-plugins/dist/roadiehq-backstage-plugin-argo-cd
-        disabled: true
-
-      # -----------------------------------------------------------------------
-      # Quay container registry plugin
-      # -----------------------------------------------------------------------
-      - package: ./dynamic-plugins/dist/janus-idp-backstage-plugin-quay
-        disabled: false
-
-      # -----------------------------------------------------------------------
-      # RBAC plugin (Developer Hub permission framework)
-      # -----------------------------------------------------------------------
-      - package: ./dynamic-plugins/dist/janus-idp-backstage-plugin-rbac
-        disabled: false
+    plugins: []
