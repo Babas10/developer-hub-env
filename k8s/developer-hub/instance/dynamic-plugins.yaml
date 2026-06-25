@@ -26,7 +26,7 @@ data:
       # ── ArgoCD (Roadie variant — bundled in RHDH defaults) ────────────────
       - package: oci://ghcr.io/redhat-developer/rhdh-plugin-export-overlays/roadiehq-backstage-plugin-argo-cd-backend:{{inherit}}
         disabled: false
-      - package: oci://ghcr.io/redhat-developer/rhdh-plugin-export-overlays/roadiehq-backstage-plugin-argo-cd:{{inherit}}
+      - package: oci://ghcr.io/redhat-developer/rhdh-plugin-export-overlays/roadiehq-backstage-plugin-argo-cd:bs_1.49.4__2.12.5
         disabled: false
 
       # ── Tekton ────────────────────────────────────────────────────────────
