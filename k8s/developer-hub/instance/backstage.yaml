@@ -6,7 +6,6 @@ metadata:
   namespace: developer-hub
 spec:
   application:
-    replicas: 1
     route:
       enabled: true
     appConfig:
