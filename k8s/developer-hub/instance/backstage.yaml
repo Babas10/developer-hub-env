@@ -2,7 +2,7 @@
 # Red Hat Developer Hub instance.
 # Managed by the rhdh operator (rhdh.redhat.com/v1alpha3).
 # The operator provisions the Backstage deployment, Service, and Route automatically.
-apiVersion: rhdh.redhat.com/v1alpha3
+apiVersion: rhdh.redhat.com/v1alpha1
 kind: Backstage
 metadata:
   name: developer-hub
