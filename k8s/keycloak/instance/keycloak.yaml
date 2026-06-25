@@ -6,6 +6,12 @@ metadata:
   namespace: keycloak
 spec:
   instances: 1
+  additionalOptions:
+    # Tell Keycloak it is behind a TLS-terminating proxy (OpenShift edge route).
+    # The router forwards X-Forwarded-Proto: https so Keycloak sets secure cookies
+    # and determines the correct origin for CORS.
+    - name: proxy-headers
+      value: xforwarded
   db:
     vendor: postgres
     host: rhdh-keycloak-postgres
