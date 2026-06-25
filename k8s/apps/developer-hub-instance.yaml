@@ -14,7 +14,7 @@ spec:
     path: k8s/developer-hub/instance
   destination:
     server: https://kubernetes.default.svc
-    namespace: rhdh-operator
+    namespace: developer-hub
   syncPolicy:
     automated:
       prune: true

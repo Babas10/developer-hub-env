@@ -7,7 +7,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: app-config-rhdh
-  namespace: rhdh-operator
+  namespace: developer-hub
 data:
   app-config.yaml: |
     app:
