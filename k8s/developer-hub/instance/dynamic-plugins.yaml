@@ -30,20 +30,6 @@ data:
       # Frontend: Roadie plugin (built for RHDH entity page system)
       - package: oci://ghcr.io/redhat-developer/rhdh-plugin-export-overlays/roadiehq-backstage-plugin-argo-cd:bs_1.49.4__2.12.5
         disabled: false
-        pluginConfig:
-          dynamicPlugins:
-            frontend:
-              roadiehq.backstage-plugin-argo-cd:
-                entityTabs:
-                  - path: /argo-cd
-                    title: ArgoCD
-                    mountPoint: entity.page.argocd
-                mountPoints:
-                  - mountPoint: entity.page.argocd/cards
-                    importName: ArgocdContent
-                    config:
-                      layout:
-                        gridColumn: "1 / -1"
 
       # ── Tekton ────────────────────────────────────────────────────────────
       - package: oci://ghcr.io/redhat-developer/rhdh-plugin-export-overlays/backstage-community-plugin-tekton:{{inherit}}
