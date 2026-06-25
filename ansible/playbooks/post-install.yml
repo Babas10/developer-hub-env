@@ -89,9 +89,8 @@
         validate_certs: false
         api_version: route.openshift.io/v1
         kind: Route
+        name: rhdh-keycloak
         namespace: keycloak
-        label_selectors:
-          - app=rhdh-keycloak
       register: keycloak_route_users
       tags: keycloak-users
 
