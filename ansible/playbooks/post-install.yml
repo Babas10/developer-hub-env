@@ -1,9 +1,11 @@
 ---
 # Post-install playbook — runs AFTER ArgoCD has fully synced all waves.
 # Responsibilities:
-#   1. Wait for Keycloak route to be available
-#   2. Create backstage-cluster-config secret with KEYCLOAK_BASE_URL
-#   3. Create Keycloak users via admin API
+#   1. Create Keycloak users via admin API
+#      (RHBK v26 operator does not support user imports via KeycloakRealmImport)
+#
+# Note: KEYCLOAK_BASE_URL is handled by bootstrap.yml (written to git as a
+# ConfigMap and synced by ArgoCD on first deployment).
 #
 # Usage:
 #   ansible-playbook ansible/playbooks/post-install.yml \
@@ -76,55 +78,6 @@
         k8s_api_key: "{{ ocp_token }}"
       when: ocp_token != ""
       tags: always
-
-    # -------------------------------------------------------------------------
-    # Wait for Keycloak route
-    # -------------------------------------------------------------------------
-    - name: Wait for Keycloak route to be available
-      kubernetes.core.k8s_info:
-        host: "{{ ocp_api_url }}"
-        api_key: "{{ k8s_api_key }}"
-        validate_certs: false
-        api_version: route.openshift.io/v1
-        kind: Route
-        namespace: keycloak
-        label_selectors:
-          - app=keycloak
-      register: keycloak_route
-      until:
-        - keycloak_route.resources | length > 0
-        - keycloak_route.resources[0].spec.host is defined
-      retries: 30
-      delay: 20
-      tags: keycloak-config
-
-    - name: Set Keycloak URL facts
-      ansible.builtin.set_fact:
-        keycloak_url: "https://{{ keycloak_route.resources[0].spec.host }}"
-        keycloak_base_url: "https://{{ keycloak_route.resources[0].spec.host }}/realms/rhdh"
-      tags: keycloak-config
-
-    # -------------------------------------------------------------------------
-    # Create backstage-cluster-config secret
-    # KEYCLOAK_BASE_URL  — OIDC metadata URL base (includes /realms/rhdh)
-    # KEYCLOAK_URL       — root URL used by the catalog Keycloak sync plugin
-    # -------------------------------------------------------------------------
-    - name: Create backstage-cluster-config secret
-      kubernetes.core.k8s:
-        host: "{{ ocp_api_url }}"
-        api_key: "{{ k8s_api_key }}"
-        validate_certs: false
-        state: present
-        definition:
-          apiVersion: v1
-          kind: Secret
-          metadata:
-            name: backstage-cluster-config
-            namespace: developer-hub
-          stringData:
-            KEYCLOAK_BASE_URL: "{{ keycloak_base_url }}"
-            KEYCLOAK_URL: "{{ keycloak_url }}"
-      tags: keycloak-config
 
     # -------------------------------------------------------------------------
     # Create Keycloak users via admin API

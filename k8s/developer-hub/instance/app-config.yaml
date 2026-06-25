@@ -40,8 +40,9 @@ data:
       providers:
         keycloakOrg:
           default:
-            # KEYCLOAK_URL is the root URL (no realm path) — used by the admin API
-            baseUrl: "${KEYCLOAK_URL}"
+            # Internal K8s service URL — server-to-server, always the same regardless of cluster.
+            # The operator creates the service named keycloak-service in the keycloak namespace.
+            baseUrl: "http://keycloak-service.keycloak.svc.cluster.local:8080"
             loginRealm: master
             realm: rhdh
             clientId: "${KEYCLOAK_CLIENT_ID}"
