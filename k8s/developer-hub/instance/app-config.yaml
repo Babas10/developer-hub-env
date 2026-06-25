@@ -44,7 +44,7 @@ data:
         - type: 'config'
           instances:
             - name: default
-              url: "${ARGOCD_INSTANCE_URL}"
+              url: "${ARGOCD_INSTANCE1_URL}"
               username: "${ARGOCD_USERNAME}"
               password: "${ARGOCD_PASSWORD}"
 
