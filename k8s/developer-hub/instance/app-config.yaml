@@ -35,6 +35,26 @@ data:
                 - resolver: preferredUsernameMatchingUserEntityName
                 - resolver: emailMatchingUserEntityProfileEmail
 
+    argocd:
+      appLocatorMethods:
+        - type: 'config'
+          instances:
+            - name: default
+              url: "${ARGOCD_INSTANCE_URL}"
+              token: "${ARGOCD_AUTH_TOKEN}"
+
+    kubernetes:
+      serviceLocatorMethod:
+        type: multiTenant
+      clusterLocatorMethods:
+        - type: config
+          clusters:
+            - name: "${K8S_CLUSTER_NAME}"
+              url: "${K8S_CLUSTER_URL}"
+              authProvider: serviceAccount
+              skipTLSVerify: true
+              serviceAccountToken: "${K8S_SERVICE_ACCOUNT_TOKEN}"
+
     catalog:
       providers:
         keycloakOrg:

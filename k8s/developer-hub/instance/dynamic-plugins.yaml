@@ -13,5 +13,22 @@ data:
     includes:
       - dynamic-plugins.default.yaml
     plugins:
+      # ── Keycloak catalog sync ──────────────────────────────────────────────
       - package: ./dynamic-plugins/dist/backstage-community-plugin-catalog-backend-module-keycloak-dynamic
+        disabled: false
+
+      # ── Kubernetes (required by Tekton) ───────────────────────────────────
+      - package: ./dynamic-plugins/dist/backstage-plugin-kubernetes
+        disabled: false
+      - package: ./dynamic-plugins/dist/backstage-plugin-kubernetes-backend-dynamic
+        disabled: false
+
+      # ── ArgoCD ────────────────────────────────────────────────────────────
+      - package: oci://ghcr.io/redhat-developer/rhdh-plugin-export-overlays/backstage-community-plugin-argocd-backend:{{inherit}}
+        disabled: false
+      - package: oci://ghcr.io/redhat-developer/rhdh-plugin-export-overlays/backstage-community-plugin-argocd:{{inherit}}
+        disabled: false
+
+      # ── Tekton ────────────────────────────────────────────────────────────
+      - package: oci://ghcr.io/redhat-developer/rhdh-plugin-export-overlays/backstage-community-plugin-tekton:{{inherit}}
         disabled: false
