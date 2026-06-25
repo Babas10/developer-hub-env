@@ -19,6 +19,10 @@ data:
 
     signInPage: oidc
 
+    integrations:
+      github:
+        - host: github.com
+
     auth:
       environment: production
       session:

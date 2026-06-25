@@ -23,10 +23,10 @@ data:
       - package: ./dynamic-plugins/dist/backstage-plugin-kubernetes-backend-dynamic
         disabled: false
 
-      # ── ArgoCD ────────────────────────────────────────────────────────────
-      - package: oci://ghcr.io/redhat-developer/rhdh-plugin-export-overlays/backstage-community-plugin-argocd-backend:{{inherit}}
+      # ── ArgoCD (Roadie variant — bundled in RHDH defaults) ────────────────
+      - package: oci://ghcr.io/redhat-developer/rhdh-plugin-export-overlays/roadiehq-backstage-plugin-argo-cd-backend:{{inherit}}
         disabled: false
-      - package: oci://ghcr.io/redhat-developer/rhdh-plugin-export-overlays/backstage-community-plugin-argocd:{{inherit}}
+      - package: oci://ghcr.io/redhat-developer/rhdh-plugin-export-overlays/roadiehq-backstage-plugin-argo-cd:{{inherit}}
         disabled: false
 
       # ── Tekton ────────────────────────────────────────────────────────────
