@@ -28,7 +28,7 @@ data:
       - package: oci://ghcr.io/redhat-developer/rhdh-plugin-export-overlays/backstage-community-plugin-argocd-backend:bs_1.49.4__1.4.0
         disabled: false
       # Frontend: Roadie plugin (built for RHDH entity page system)
-      - package: oci://ghcr.io/redhat-developer/rhdh-plugin-export-overlays/roadiehq-backstage-plugin-argo-cd:{{inherit}}
+      - package: oci://ghcr.io/redhat-developer/rhdh-plugin-export-overlays/roadiehq-backstage-plugin-argo-cd:bs_1.49.4__2.12.5
         disabled: false
         pluginConfig:
           dynamicPlugins:
