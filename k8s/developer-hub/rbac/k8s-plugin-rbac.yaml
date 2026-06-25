@@ -1,0 +1,21 @@
+---
+# Service account used by the RHDH Kubernetes plugin to read cluster resources.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: rhdh-k8s-plugin
+  namespace: developer-hub
+---
+# Allow the service account to read workload resources across all namespaces.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: rhdh-k8s-plugin-view
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: view
+subjects:
+  - kind: ServiceAccount
+    name: rhdh-k8s-plugin
+    namespace: developer-hub

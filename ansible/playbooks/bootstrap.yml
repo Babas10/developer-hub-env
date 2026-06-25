@@ -233,6 +233,7 @@
       ansible.builtin.set_fact:
         keycloak_base_url: "{{ ocp_api_url | regex_replace('https://api\\.(.+?):\\d+$', 'https://rhdh-keycloak-keycloak.apps.\\1') }}/realms/rhdh"
         argocd_instance1_url: "{{ ocp_api_url | regex_replace('https://api\\.(.+?):\\d+$', 'https://openshift-gitops-server-openshift-gitops.apps.\\1') }}"
+        k8s_cluster_name: "{{ ocp_api_url | regex_replace('https://api\\.(.+?):\\d+$', '\\1') }}"
       tags: argocd-apps
 
     - name: Write backstage-cluster-config ConfigMap
@@ -250,6 +251,8 @@
           data:
             KEYCLOAK_BASE_URL: "{{ keycloak_base_url }}"
             ARGOCD_INSTANCE1_URL: "{{ argocd_instance1_url }}"
+            K8S_CLUSTER_URL: "{{ ocp_api_url }}"
+            K8S_CLUSTER_NAME: "{{ k8s_cluster_name }}"
       tags: argocd-apps
 
     - name: Commit and push backstage-cluster-config to git

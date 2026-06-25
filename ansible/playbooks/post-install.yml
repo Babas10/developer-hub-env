@@ -272,6 +272,90 @@
       tags: keycloak-service-account
 
     # -------------------------------------------------------------------------
+    # Seal K8S_SERVICE_ACCOUNT_TOKEN for the Kubernetes plugin
+    # Creates a long-lived token for the rhdh-k8s-plugin service account,
+    # seals it, and commits the updated SealedSecret to git.
+    # Usage: --tags k8s-token
+    # -------------------------------------------------------------------------
+    - name: Create long-lived token for rhdh-k8s-plugin service account
+      ansible.builtin.command:
+        argv:
+          - oc
+          - create
+          - token
+          - rhdh-k8s-plugin
+          - --namespace=developer-hub
+          - --duration=87600h
+          - --server={{ ocp_api_url }}
+          - --token={{ k8s_api_key }}
+          - --insecure-skip-tls-verify=true
+      register: k8s_sa_token
+      tags: k8s-token
+
+    - name: Fetch Sealed Secrets public cert
+      ansible.builtin.command:
+        argv:
+          - oc
+          - get
+          - secret
+          - sealed-secrets-key
+          - --namespace=sealed-secrets
+          - --server={{ ocp_api_url }}
+          - --token={{ k8s_api_key }}
+          - --insecure-skip-tls-verify=true
+          - -o
+          - jsonpath={.data.tls\.crt}
+      register: sealed_cert_b64
+      tags: k8s-token
+
+    - name: Write Sealed Secrets cert to temp file
+      ansible.builtin.copy:
+        content: "{{ sealed_cert_b64.stdout | b64decode }}"
+        dest: /tmp/ss_cert.crt
+        mode: '0600'
+      tags: k8s-token
+
+    - name: Seal K8S_SERVICE_ACCOUNT_TOKEN
+      ansible.builtin.shell: |
+        echo -n "{{ k8s_sa_token.stdout }}" | \
+          kubeseal --raw \
+            --namespace developer-hub \
+            --name backstage-secrets \
+            --cert /tmp/ss_cert.crt
+      register: sealed_k8s_token
+      tags: k8s-token
+
+    - name: Inject sealed token into backstage-secrets-sealed.yaml
+      ansible.builtin.replace:
+        path: "{{ playbook_dir }}/../../k8s/developer-hub/instance/backstage-secrets-sealed.yaml"
+        regexp: '^\s+K8S_SERVICE_ACCOUNT_TOKEN:.*$'
+        replace: "    K8S_SERVICE_ACCOUNT_TOKEN: {{ sealed_k8s_token.stdout }}"
+      tags: k8s-token
+
+    - name: Add K8S_SERVICE_ACCOUNT_TOKEN if not present
+      ansible.builtin.lineinfile:
+        path: "{{ playbook_dir }}/../../k8s/developer-hub/instance/backstage-secrets-sealed.yaml"
+        insertafter: '^\s+ARGOCD_PASSWORD:.*$'
+        line: "    K8S_SERVICE_ACCOUNT_TOKEN: {{ sealed_k8s_token.stdout }}"
+        regexp: '^\s+K8S_SERVICE_ACCOUNT_TOKEN:.*$'
+      tags: k8s-token
+
+    - name: Commit and push updated SealedSecret
+      ansible.builtin.shell: |
+        cd "{{ playbook_dir }}/../.."
+        git add k8s/developer-hub/instance/backstage-secrets-sealed.yaml
+        git diff --cached --quiet && echo "no-change" || git commit -m "chore: update sealed K8S_SERVICE_ACCOUNT_TOKEN" && git push
+      register: git_k8s_token_push
+      changed_when: "'no-change' not in git_k8s_token_push.stdout"
+      tags: k8s-token
+
+    - name: Clean up temp cert file
+      ansible.builtin.file:
+        path: /tmp/ss_cert.crt
+        state: absent
+      tags: k8s-token
+
+    # -------------------------------------------------------------------------
     # Set ArgoCD rhdh account password
     # Requires the rhdh account to exist (ArgoCD CR must be synced first).
     # argocd_rhdh_password must be defined in vault.yml.
