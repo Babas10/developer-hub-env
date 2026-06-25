@@ -40,3 +40,44 @@ spec:
           description: Standard Developer Hub user
         - name: developer-hub-admin
           description: Developer Hub administrator
+    # Dev users — passwords are plain text here and hashed by Keycloak on import.
+    # Acceptable for ephemeral dev clusters. Rotate for any shared/long-lived environment.
+    users:
+      - username: etienne
+        email: etienne@redhat.com
+        firstName: Etienne
+        lastName: Dubois
+        enabled: true
+        emailVerified: true
+        credentials:
+          - type: password
+            value: "rhdh-admin-2026"
+            temporary: false
+        realmRoles:
+          - developer-hub-admin
+
+      - username: developer1
+        email: developer1@redhat.com
+        firstName: Developer
+        lastName: One
+        enabled: true
+        emailVerified: true
+        credentials:
+          - type: password
+            value: "rhdh-dev-2026"
+            temporary: false
+        realmRoles:
+          - developer-hub-user
+
+      - username: developer2
+        email: developer2@redhat.com
+        firstName: Developer
+        lastName: Two
+        enabled: true
+        emailVerified: true
+        credentials:
+          - type: password
+            value: "rhdh-dev-2026"
+            temporary: false
+        realmRoles:
+          - developer-hub-user
