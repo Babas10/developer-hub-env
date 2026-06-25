@@ -9,6 +9,24 @@ Owner: Red Hat employee (Etienne Dubois). Clusters are ephemeral sandbox environ
 
 ---
 
+## Image Policy — CRITICAL
+
+**Never use Docker Hub or community images (docker.io, bitnami, quay.io/bitnami, etc.).**
+All container images must come from the Red Hat registry:
+
+| Use case | Image |
+|----------|-------|
+| PostgreSQL 15 | `registry.redhat.io/rhel9/postgresql-15:latest` |
+| PostgreSQL 16 | `registry.redhat.io/rhel9/postgresql-16:latest` |
+
+Red Hat PostgreSQL images use:
+- Env vars: `POSTGRESQL_USER`, `POSTGRESQL_PASSWORD`, `POSTGRESQL_DATABASE`
+- Data directory: `/var/lib/pgsql/data`
+
+When in doubt, search `registry.redhat.io` for the appropriate Red Hat supported image.
+
+---
+
 ## Architecture
 
 ```
