@@ -24,4 +24,4 @@ spec:
     # strict: false allows the instance to respond to any hostname (ephemeral clusters)
     strict: false
   ingress:
-    enabled: true
+    enabled: false  # Route is managed separately below — ingress.enabled creates a K8s Ingress, not an OCP Route
