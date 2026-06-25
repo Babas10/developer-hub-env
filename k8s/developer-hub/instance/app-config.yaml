@@ -24,7 +24,7 @@ data:
       providers:
         oidc:
           production:
-            # KEYCLOAK_BASE_URL is injected at bootstrap time into backstage-cluster-config secret.
+            # KEYCLOAK_BASE_URL is injected at post-install time into backstage-cluster-config secret.
             # Format: https://<keycloak-route>/realms/rhdh
             metadataUrl: "${KEYCLOAK_BASE_URL}/.well-known/openid-configuration"
             clientId: "${KEYCLOAK_CLIENT_ID}"
@@ -35,3 +35,18 @@ data:
               resolvers:
                 - resolver: preferredUsernameMatchingUserEntityName
                 - resolver: emailMatchingUserEntityProfileEmail
+
+    catalog:
+      providers:
+        keycloakOrg:
+          default:
+            # KEYCLOAK_URL is the root URL (no realm path) — used by the admin API
+            baseUrl: "${KEYCLOAK_URL}"
+            loginRealm: master
+            realm: rhdh
+            clientId: "${KEYCLOAK_CLIENT_ID}"
+            clientSecret: "${KEYCLOAK_CLIENT_SECRET}"
+            schedule:
+              frequency: { minutes: 30 }
+              timeout: { minutes: 3 }
+              initialDelay: { seconds: 30 }

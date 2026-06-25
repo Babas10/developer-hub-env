@@ -98,13 +98,16 @@
       delay: 20
       tags: keycloak-config
 
-    - name: Set Keycloak base URL fact
+    - name: Set Keycloak URL facts
       ansible.builtin.set_fact:
+        keycloak_url: "https://{{ keycloak_route.resources[0].spec.host }}"
         keycloak_base_url: "https://{{ keycloak_route.resources[0].spec.host }}/realms/rhdh"
       tags: keycloak-config
 
     # -------------------------------------------------------------------------
-    # Create backstage-cluster-config secret with KEYCLOAK_BASE_URL
+    # Create backstage-cluster-config secret
+    # KEYCLOAK_BASE_URL  — OIDC metadata URL base (includes /realms/rhdh)
+    # KEYCLOAK_URL       — root URL used by the catalog Keycloak sync plugin
     # -------------------------------------------------------------------------
     - name: Create backstage-cluster-config secret
       kubernetes.core.k8s:
@@ -120,6 +123,7 @@
             namespace: developer-hub
           stringData:
             KEYCLOAK_BASE_URL: "{{ keycloak_base_url }}"
+            KEYCLOAK_URL: "{{ keycloak_url }}"
       tags: keycloak-config
 
     # -------------------------------------------------------------------------
