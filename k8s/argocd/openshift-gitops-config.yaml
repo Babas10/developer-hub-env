@@ -1,0 +1,23 @@
+---
+# ArgoCD instance configuration — managed by ArgoCD itself (GitOps).
+# Changes to users, RBAC, or resource customizations go here and are
+# applied automatically when merged to main.
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: openshift-gitops
+  namespace: openshift-gitops
+spec:
+  extraConfig:
+    # Local account for the RHDH ArgoCD plugin.
+    # Read-only, scoped to the apps-demo project only.
+    accounts.rhdh: apiKey
+
+  rbac:
+    defaultPolicy: ""
+    policy: |
+      g, system:cluster-admins, role:admin
+      g, cluster-admins, role:admin
+      p, role:rhdh-reader, applications, get, apps-demo/*, allow
+      g, rhdh, role:rhdh-reader
+    scopes: '[groups]'

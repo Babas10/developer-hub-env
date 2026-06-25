@@ -142,6 +142,12 @@ kubectl create secret generic my-secret \
 
 ---
 
+## Git Conventions
+
+- Never add `Co-Authored-By` lines to commit messages or pull request bodies.
+
+---
+
 ## Development Conventions
 
 - Ansible bootstrap is minimal — only what ArgoCD cannot install itself

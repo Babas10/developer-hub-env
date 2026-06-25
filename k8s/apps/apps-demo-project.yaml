@@ -1,0 +1,20 @@
+---
+# AppProject scoping demo apps for the RHDH ArgoCD plugin.
+# The RHDH ArgoCD user only has read access to this project,
+# so it cannot see developer-hub or keycloak apps.
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: apps-demo
+  namespace: openshift-gitops
+spec:
+  description: Demo applications for RHDH showcase
+  sourceRepos:
+    - https://github.com/Babas10/demo-stopwatch
+    - https://github.com/Babas10/demo-todo
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: agent-apps
+  clusterResourceWhitelist:
+    - group: ''
+      kind: Namespace
