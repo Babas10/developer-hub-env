@@ -43,7 +43,7 @@ spec:
                 emptyDir: {}
             containers:
               - name: llama-stack
-                image: 'quay.io/redhat-ai-dev/llama-stack:0.1.4'
+                image: 'quay.io/redhat-ai-dev/llama-stack:library-0.5.2'
                 envFrom:
                   - secretRef:
                       name: llama-stack-secrets
