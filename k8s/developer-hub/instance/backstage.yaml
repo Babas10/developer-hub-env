@@ -20,9 +20,6 @@ spec:
           value: "0"
       secrets:
         - name: backstage-secrets          # static sealed: BACKEND_SECRET, SESSION_SECRET, KEYCLOAK_CLIENT_*
-        - name: llama-stack-secrets        # ENABLE_OLLAMA, OLLAMA_URL → injected into lightspeed-core
-          containers:
-            - lightspeed-core
       configMaps:
         - name: backstage-cluster-config   # written to git by bootstrap.yml: KEYCLOAK_BASE_URL
     extraFiles:
@@ -34,3 +31,20 @@ spec:
             - lightspeed-core
   database:
     enableLocalDb: true
+  deployment:
+    patch:
+      spec:
+        template:
+          spec:
+            volumes:
+              - name: shared-storage
+                emptyDir: {}
+            containers:
+              - name: llama-stack
+                image: 'quay.io/redhat-ai-dev/llama-stack:0.1.4'
+                envFrom:
+                  - secretRef:
+                      name: llama-stack-secrets
+                volumeMounts:
+                  - mountPath: /app-root/.llama
+                    name: shared-storage

@@ -16,7 +16,8 @@ data:
       color_log: true
       access_log: true
     llama_stack:
-      use_as_library_client: true
+      use_as_library_client: false
+      url: http://localhost:8321
     user_data_collection:
       feedback_enabled: false
       transcripts_enabled: false
