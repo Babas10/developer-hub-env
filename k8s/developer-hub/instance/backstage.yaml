@@ -29,29 +29,10 @@ spec:
           key: lightspeed-stack.yaml
           containers:
             - lightspeed-core
+        - name: llama-stack-run-config
+          mountPath: /app-root
+          key: llama-stack-run.yaml
+          containers:
+            - lightspeed-core
   database:
     enableLocalDb: true
-  deployment:
-    patch:
-      spec:
-        template:
-          spec:
-            volumes:
-              - name: shared-storage
-                emptyDir: {}
-              - name: rag-data-volume
-                emptyDir: {}
-            containers:
-              - name: llama-stack
-                image: 'quay.io/redhat-ai-dev/llama-stack:library-0.5.2'
-                env:
-                  - name: LLAMA_STACK_PORT
-                    value: "8321"
-                envFrom:
-                  - secretRef:
-                      name: llama-stack-secrets
-                volumeMounts:
-                  - mountPath: /app-root/.llama
-                    name: shared-storage
-                  - mountPath: /rag-content
-                    name: rag-data-volume
