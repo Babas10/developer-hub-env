@@ -60,13 +60,12 @@ spec:
                     name: rag-data-volume
               - name: lightspeed-core
                 image: 'quay.io/lightspeed-core/lightspeed-stack:0.4.0'
+                env:
+                  - name: APP_CONFIG
+                    value: /app-root/lightspeed-stack.yaml
                 volumeMounts:
                   - mountPath: /app-root/lightspeed-stack.yaml
                     name: lightspeed-stack
                     subPath: lightspeed-stack.yaml
-                  - mountPath: /tmp/data/feedback
-                    name: shared-storage
-                  - mountPath: /tmp/data/transcripts
-                    name: shared-storage
-                  - mountPath: /tmp/data/conversations
+                  - mountPath: /tmp/data
                     name: shared-storage
