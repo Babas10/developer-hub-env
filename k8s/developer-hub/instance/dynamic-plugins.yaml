@@ -69,6 +69,3 @@ data:
                     config:
                       layout:
                         gridColumn: 1 / -1
-                      if:
-                        allOf:
-                          - isTektonCIAvailable
