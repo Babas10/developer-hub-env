@@ -29,10 +29,29 @@ spec:
           key: lightspeed-stack.yaml
           containers:
             - lightspeed-core
-        - name: llama-stack-run-config
-          mountPath: /app-root
-          key: llama-stack-run.yaml
-          containers:
-            - lightspeed-core
   database:
     enableLocalDb: true
+  deployment:
+    patch:
+      spec:
+        template:
+          spec:
+            volumes:
+              - name: rag-data-volume
+                emptyDir: {}
+            containers:
+              - name: llama-stack
+                image: 'quay.io/redhat-ai-dev/llama-stack:library-0.5.2'
+                # Run as llama-stack server (not LCS) using the built-in config.yaml.
+                # config.yaml has server.port=8321 and reads ENABLE_OLLAMA/OLLAMA_URL from env.
+                command:
+                  - /app-root/.venv/bin/llama
+                  - stack
+                  - run
+                  - /app-root/config.yaml
+                envFrom:
+                  - secretRef:
+                      name: llama-stack-secrets
+                volumeMounts:
+                  - mountPath: /rag-content
+                    name: rag-data-volume
