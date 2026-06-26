@@ -58,6 +58,7 @@ data:
               url: "${K8S_CLUSTER_URL}"
               authProvider: serviceAccount
               skipTLSVerify: true
+              caData: "${K8S_CLUSTER_CA}"
               serviceAccountToken: "${K8S_SERVICE_ACCOUNT_TOKEN}"
 
     catalog:

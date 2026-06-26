@@ -236,6 +236,23 @@
         k8s_cluster_name: "{{ ocp_api_url | regex_replace('https://api\\.(.+?):\\d+$', '\\1') }}"
       tags: argocd-apps
 
+    - name: Fetch cluster CA certificate
+      kubernetes.core.k8s_info:
+        host: "{{ ocp_api_url }}"
+        api_key: "{{ k8s_api_key }}"
+        validate_certs: false
+        api_version: v1
+        kind: ConfigMap
+        name: kube-root-ca.crt
+        namespace: developer-hub
+      register: kube_root_ca
+      tags: argocd-apps
+
+    - name: Encode cluster CA as base64
+      ansible.builtin.set_fact:
+        k8s_cluster_ca: "{{ kube_root_ca.resources[0].data['ca.crt'] | b64encode }}"
+      tags: argocd-apps
+
     - name: Write backstage-cluster-config ConfigMap
       ansible.builtin.copy:
         dest: "{{ playbook_dir }}/../../k8s/developer-hub/instance/backstage-cluster-config.yaml"
@@ -253,6 +270,7 @@
             ARGOCD_INSTANCE1_URL: "{{ argocd_instance1_url }}"
             K8S_CLUSTER_URL: "{{ ocp_api_url }}"
             K8S_CLUSTER_NAME: "{{ k8s_cluster_name }}"
+            K8S_CLUSTER_CA: "{{ k8s_cluster_ca }}"
       tags: argocd-apps
 
     - name: Commit and push backstage-cluster-config to git
