@@ -60,6 +60,13 @@ data:
               skipTLSVerify: true
               caData: "${K8S_CLUSTER_CA}"
               serviceAccountToken: "${K8S_SERVICE_ACCOUNT_TOKEN}"
+      customResources:
+        - group: 'tekton.dev'
+          apiVersion: 'v1'
+          plural: 'pipelineruns'
+        - group: 'tekton.dev'
+          apiVersion: 'v1'
+          plural: 'taskruns'
 
     catalog:
       locations:
