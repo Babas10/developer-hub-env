@@ -317,7 +317,7 @@
 
     - name: Seal K8S_SERVICE_ACCOUNT_TOKEN
       ansible.builtin.shell: |
-        echo -n "{{ k8s_sa_token.stdout }}" | \
+        printf '%s' "{{ k8s_sa_token.stdout }}" | \
           kubeseal --raw \
             --namespace developer-hub \
             --name backstage-secrets \
