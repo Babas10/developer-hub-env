@@ -20,52 +20,17 @@ spec:
           value: "0"
       secrets:
         - name: backstage-secrets          # static sealed: BACKEND_SECRET, SESSION_SECRET, KEYCLOAK_CLIENT_*
+        - name: llama-stack-secrets        # ENABLE_OLLAMA, OLLAMA_URL → injected into lightspeed-core
+          containers:
+            - lightspeed-core
       configMaps:
         - name: backstage-cluster-config   # written to git by bootstrap.yml: KEYCLOAK_BASE_URL
+    extraFiles:
+      configMaps:
+        - name: lightspeed-stack
+          mountPath: /app-root
+          key: lightspeed-stack.yaml
+          containers:
+            - lightspeed-core
   database:
     enableLocalDb: true
-  deployment:
-    patch:
-      spec:
-        template:
-          spec:
-            volumes:
-              - name: lightspeed-stack
-                configMap:
-                  name: lightspeed-stack
-              - name: shared-storage
-                emptyDir: {}
-              - name: rag-data-volume
-                emptyDir: {}
-            initContainers:
-              - name: init-rag-data
-                image: 'quay.io/redhat-ai-dev/rag-content:release-1.9-lcs'
-                command:
-                  - sh
-                  - -c
-                  - cp -r /rag/vector_db/rhdh_product_docs /rag-content/ && cp -r /rag/embeddings_model /rag-content/
-                volumeMounts:
-                  - mountPath: /rag-content
-                    name: rag-data-volume
-            containers:
-              - name: llama-stack
-                image: 'quay.io/redhat-ai-dev/llama-stack:0.1.4'
-                envFrom:
-                  - secretRef:
-                      name: llama-stack-secrets
-                volumeMounts:
-                  - mountPath: /app-root/.llama
-                    name: shared-storage
-                  - mountPath: /rag-content
-                    name: rag-data-volume
-              - name: lightspeed-core
-                image: 'quay.io/lightspeed-core/lightspeed-stack:0.4.0'
-                env:
-                  - name: APP_CONFIG
-                    value: /app-root/lightspeed-stack.yaml
-                volumeMounts:
-                  - mountPath: /app-root/lightspeed-stack.yaml
-                    name: lightspeed-stack
-                    subPath: lightspeed-stack.yaml
-                  - mountPath: /tmp/data
-                    name: shared-storage
