@@ -39,6 +39,8 @@ spec:
             volumes:
               - name: shared-storage
                 emptyDir: {}
+              - name: rag-data-volume
+                emptyDir: {}
             containers:
               - name: llama-stack
                 image: 'quay.io/redhat-ai-dev/llama-stack:0.1.4'
@@ -48,3 +50,5 @@ spec:
                 volumeMounts:
                   - mountPath: /app-root/.llama
                     name: shared-storage
+                  - mountPath: /rag-content
+                    name: rag-data-volume
