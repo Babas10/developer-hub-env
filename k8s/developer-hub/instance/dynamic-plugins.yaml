@@ -57,9 +57,9 @@ data:
                           - isArgocdConfigured
 
       # ── Lightspeed ────────────────────────────────────────────────────────
-      - package: 'oci://registry.access.redhat.com/rhdh/red-hat-developer-hub-backstage-plugin-lightspeed-backend@sha256:21ff43f570357b96d40f84326bc801c4b23c91a670eb9437ffe9a2bee57c4b4a'
+      - package: 'oci://registry.access.redhat.com/rhdh/red-hat-developer-hub-backstage-plugin-lightspeed-backend:{{inherit}}'
         disabled: false
-      - package: 'oci://registry.access.redhat.com/rhdh/red-hat-developer-hub-backstage-plugin-lightspeed@sha256:f747559dcfb49d817ecaf789eccbf4ba71acc6e7e43efda57822ef343d65926c'
+      - package: 'oci://registry.access.redhat.com/rhdh/red-hat-developer-hub-backstage-plugin-lightspeed:{{inherit}}'
         disabled: false
 
       # ── Tekton ────────────────────────────────────────────────────────────
