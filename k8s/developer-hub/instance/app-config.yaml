@@ -68,12 +68,6 @@ data:
           apiVersion: 'v1'
           plural: 'taskruns'
 
-    lightspeed:
-      servers:
-        - id: ollama-cpu
-          url: 'http://ollama.ai-agentic.svc:11434/v1'
-          model: qwen2.5:1.5b
-
     catalog:
       locations:
         - type: url

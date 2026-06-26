@@ -1,0 +1,32 @@
+---
+# Lightspeed Core Service (LCS) configuration.
+# LCS talks to the llama-stack sidecar on localhost:8321.
+# llama-stack then talks to Ollama via OLLAMA_URL from llama-stack-secrets.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: lightspeed-stack
+  namespace: developer-hub
+data:
+  lightspeed-stack.yaml: |
+    name: Lightspeed Core Service (LCS)
+    service:
+      host: 0.0.0.0
+      auth_enabled: false
+      workers: 1
+      color_log: true
+      access_log: true
+    llama_stack:
+      use_as_library_client: false
+      url: http://localhost:8321
+    user_data_collection:
+      feedback_enabled: true
+      feedback_storage: "/tmp/data/feedback"
+      transcripts_enabled: true
+      transcripts_storage: "/tmp/data/transcripts"
+    authentication:
+      module: "noop"
+    conversation_cache:
+      type: "sqlite"
+      sqlite:
+        db_path: "/tmp/data/conversations/lcs_cache.db"

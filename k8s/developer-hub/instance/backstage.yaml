@@ -12,6 +12,7 @@ spec:
       mountPath: /opt/app-root/src
       configMaps:
         - name: app-config-rhdh
+        - name: lightspeed-app-config
     dynamicPluginsConfigMapName: dynamic-plugins-rhdh
     extraEnvs:
       envs:
@@ -23,3 +24,49 @@ spec:
         - name: backstage-cluster-config   # written to git by bootstrap.yml: KEYCLOAK_BASE_URL
   database:
     enableLocalDb: true
+  deployment:
+    patch:
+      spec:
+        template:
+          spec:
+            volumes:
+              - name: lightspeed-stack
+                configMap:
+                  name: lightspeed-stack
+              - name: shared-storage
+                emptyDir: {}
+              - name: rag-data-volume
+                emptyDir: {}
+            initContainers:
+              - name: init-rag-data
+                image: 'quay.io/redhat-ai-dev/rag-content:release-1.9-lcs'
+                command:
+                  - sh
+                  - -c
+                  - cp -r /rag/vector_db/rhdh_product_docs /rag-content/ && cp -r /rag/embeddings_model /rag-content/
+                volumeMounts:
+                  - mountPath: /rag-content
+                    name: rag-data-volume
+            containers:
+              - name: llama-stack
+                image: 'quay.io/redhat-ai-dev/llama-stack:0.1.4'
+                envFrom:
+                  - secretRef:
+                      name: llama-stack-secrets
+                volumeMounts:
+                  - mountPath: /app-root/.llama
+                    name: shared-storage
+                  - mountPath: /rag-content
+                    name: rag-data-volume
+              - name: lightspeed-core
+                image: 'quay.io/lightspeed-core/lightspeed-stack:0.4.0'
+                volumeMounts:
+                  - mountPath: /app-root/lightspeed-stack.yaml
+                    name: lightspeed-stack
+                    subPath: lightspeed-stack.yaml
+                  - mountPath: /tmp/data/feedback
+                    name: shared-storage
+                  - mountPath: /tmp/data/transcripts
+                    name: shared-storage
+                  - mountPath: /tmp/data/conversations
+                    name: shared-storage
