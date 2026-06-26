@@ -44,6 +44,9 @@ spec:
             containers:
               - name: llama-stack
                 image: 'quay.io/redhat-ai-dev/llama-stack:library-0.5.2'
+                env:
+                  - name: LLAMA_STACK_PORT
+                    value: "8321"
                 envFrom:
                   - secretRef:
                       name: llama-stack-secrets
