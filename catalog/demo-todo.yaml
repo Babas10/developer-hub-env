@@ -7,6 +7,7 @@ metadata:
   description: A simple todo demo application deployed via ArgoCD.
   annotations:
     argocd/app-selector: 'app=demo-todo'
+    backstage.io/kubernetes-id: demo-todo
     backstage.io/source-location: url:https://github.com/Babas10/demo-todo
 spec:
   type: website

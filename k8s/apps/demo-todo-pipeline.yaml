@@ -1,0 +1,23 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: demo-todo-pipeline
+  namespace: openshift-gitops
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+spec:
+  project: apps-demo
+  source:
+    repoURL: https://github.com/Babas10/developer-hub-env
+    targetRevision: main
+    path: k8s/pipelines/demo-todo
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: agent-apps
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

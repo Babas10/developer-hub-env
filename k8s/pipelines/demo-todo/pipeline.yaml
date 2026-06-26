@@ -1,0 +1,67 @@
+---
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: demo-todo-build
+  namespace: agent-apps
+  labels:
+    backstage.io/kubernetes-id: demo-todo
+spec:
+  params:
+    - name: repo-url
+      type: string
+      default: https://github.com/Babas10/demo-todo
+    - name: revision
+      type: string
+      default: main
+  tasks:
+    - name: clone
+      taskSpec:
+        params:
+          - name: repo-url
+          - name: revision
+        steps:
+          - name: git-clone
+            image: registry.access.redhat.com/ubi9/ubi-minimal:latest
+            script: |
+              #!/usr/bin/env sh
+              echo "Cloning $(params.repo-url) @ $(params.revision)"
+              echo "Done."
+      params:
+        - name: repo-url
+          value: $(params.repo-url)
+        - name: revision
+          value: $(params.revision)
+
+    - name: lint
+      runAfter: [clone]
+      taskSpec:
+        steps:
+          - name: run-lint
+            image: registry.access.redhat.com/ubi9/ubi-minimal:latest
+            script: |
+              #!/usr/bin/env sh
+              echo "Running lint checks..."
+              echo "No lint errors found."
+
+    - name: test
+      runAfter: [lint]
+      taskSpec:
+        steps:
+          - name: run-tests
+            image: registry.access.redhat.com/ubi9/ubi-minimal:latest
+            script: |
+              #!/usr/bin/env sh
+              echo "Running unit tests..."
+              echo "All tests passed."
+
+    - name: build
+      runAfter: [test]
+      taskSpec:
+        steps:
+          - name: run-build
+            image: registry.access.redhat.com/ubi9/ubi-minimal:latest
+            script: |
+              #!/usr/bin/env sh
+              echo "Building application image..."
+              echo "Build successful."

@@ -12,6 +12,7 @@ spec:
   sourceRepos:
     - https://github.com/Babas10/demo-stopwatch
     - https://github.com/Babas10/demo-todo
+    - https://github.com/Babas10/developer-hub-env
   destinations:
     - server: https://kubernetes.default.svc
       namespace: agent-apps
