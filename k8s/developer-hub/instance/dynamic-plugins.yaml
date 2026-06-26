@@ -56,6 +56,12 @@ data:
                         allOf:
                           - isArgocdConfigured
 
+      # ── Lightspeed ────────────────────────────────────────────────────────
+      - package: ./dynamic-plugins/dist/red-hat-developer-hub-backstage-plugin-lightspeed-backend-dynamic
+        disabled: false
+      - package: ./dynamic-plugins/dist/red-hat-developer-hub-backstage-plugin-lightspeed
+        disabled: false
+
       # ── Tekton ────────────────────────────────────────────────────────────
       - package: oci://ghcr.io/redhat-developer/rhdh-plugin-export-overlays/backstage-community-plugin-tekton:bs_1.49.4__3.37.0
         disabled: false
