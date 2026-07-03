@@ -68,6 +68,15 @@ data:
           apiVersion: 'v1'
           plural: 'taskruns'
 
+    metering:
+      prometheusUrl: https://prometheus-k8s.openshift-monitoring.svc:9091
+      windowHours: 24
+      retentionDays: 90
+      costModel:
+        # Tune these rates to match your cloud or on-prem cost model (USD per unit per hour)
+        cpuCostPerCorePerHour: 0.048
+        memoryCostPerGBPerHour: 0.006
+
     catalog:
       locations:
         - type: url
