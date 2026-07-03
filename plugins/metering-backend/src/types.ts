@@ -1,12 +1,18 @@
-export interface MeteringConfig {
-  prometheusUrl: string;
-  windowHours: number;
-  retentionDays: number;
-  costModel: {
-    cpuCostPerCorePerHour: number;
-    memoryCostPerGBPerHour: number;
-  };
-}
+import { z } from 'zod';
+
+export const costModelSchema = z.object({
+  cpuCostPerCorePerHour: z.number().positive(),
+  memoryCostPerGBPerHour: z.number().positive(),
+});
+
+export const meteringConfigSchema = z.object({
+  prometheusUrl: z.string().url(),
+  windowHours: z.number().positive().default(24),
+  retentionDays: z.number().positive().default(90),
+  costModel: costModelSchema,
+});
+
+export type MeteringConfig = z.infer<typeof meteringConfigSchema>;
 
 export interface CostResult {
   entityRef: string;
