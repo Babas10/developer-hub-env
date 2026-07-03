@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useEntity } from '@backstage/plugin-catalog-react';
 import { useApi } from '@backstage/core-plugin-api';
 import { meteringApiRef, CostResult } from '../../api';
+import { CpuChart } from '../charts/CpuChart';
 
 const ANNOTATION_K8S_NAMESPACE = 'backstage.io/kubernetes-namespace';
 const ANNOTATION_K8S_ID = 'backstage.io/kubernetes-id';
@@ -63,6 +64,23 @@ function KpiCard({
       <div style={{ fontSize: 22, fontWeight: 700 }}>{value}</div>
       {sub && <div style={{ fontSize: 11, color: '#888', marginTop: 2 }}>{sub}</div>}
     </div>
+  );
+}
+
+function SectionTitle({ children }: { children: React.ReactNode }) {
+  return (
+    <h4
+      style={{
+        margin: '20px 0 8px',
+        fontSize: 13,
+        fontWeight: 600,
+        textTransform: 'uppercase',
+        letterSpacing: '0.05em',
+        color: '#555',
+      }}
+    >
+      {children}
+    </h4>
   );
 }
 
@@ -163,28 +181,36 @@ export function MeteringCardContent() {
           Loading metrics…
         </div>
       ) : (
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <KpiCard
-            label="Hourly Cost"
-            value={`$${cost.hourlyCost.toFixed(4)}`}
-            sub={`over last ${windowHours}h avg`}
+        <>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <KpiCard
+              label="Hourly Cost"
+              value={`$${cost.hourlyCost.toFixed(4)}`}
+              sub={`over last ${windowHours}h avg`}
+            />
+            <KpiCard
+              label="Daily Cost"
+              value={`$${(cost.hourlyCost * 24).toFixed(3)}`}
+              sub="projected"
+            />
+            <KpiCard
+              label="Monthly Cost"
+              value={`$${(cost.hourlyCost * 24 * 30).toFixed(2)}`}
+              sub="projected"
+            />
+            <KpiCard
+              label="Replicas"
+              value={String(cost.replicaCount)}
+              sub="running"
+            />
+          </div>
+
+          <SectionTitle>CPU Usage</SectionTitle>
+          <CpuChart
+            cpuCores={cost.cpuCores}
+            cpuRequestCores={cost.cpuRequestCores}
           />
-          <KpiCard
-            label="Daily Cost"
-            value={`$${(cost.hourlyCost * 24).toFixed(3)}`}
-            sub="projected"
-          />
-          <KpiCard
-            label="Monthly Cost"
-            value={`$${(cost.hourlyCost * 24 * 30).toFixed(2)}`}
-            sub="projected"
-          />
-          <KpiCard
-            label="Replicas"
-            value={String(cost.replicaCount)}
-            sub="running"
-          />
-        </div>
+        </>
       )}
     </div>
   );
