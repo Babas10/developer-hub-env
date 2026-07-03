@@ -7,7 +7,32 @@ alwaysApply: true
 
 ## Git
 
-- Never add `Co-Authored-By` lines to commit messages or pull request bodies.
+- Never add `Co-Authored-By` lines, `Co-authored-by` trailers, or any AI/tool
+  attribution (e.g. "Generated with Cursor") to commit messages or pull
+  request bodies. If a commit is created with such a trailer, amend it
+  immediately to remove it before doing anything else (only if the commit is
+  local/unpushed and was created by you in the current session).
+- **One commit per story.** When implementing a plan that is structured into
+  EPICs and stories (e.g. from `.cursor/plans/*.plan.md` or GitHub issues),
+  create a separate, focused commit for each story rather than one large
+  commit for the whole EPIC or plan. Each commit message should reference
+  the EPIC and story it implements, e.g.:
+  `feat(metering): implement PrometheusClient CPU query (EPIC 2, Story 2.1)`.
+  Group multiple stories into a single commit only when they touch the same
+  few lines of the same file and cannot be meaningfully separated.
+- Keep commit messages focused on the "why", but for story-based work it's
+  fine to reference the story name/number for traceability.
+
+## Working Step-by-Step Through EPICs and Stories
+
+- When a task is broken down into EPICs and stories (whether tracked as
+  GitHub issues or in a plan file), work through them **one story at a
+  time**, in order, rather than implementing everything at once.
+- For each story: implement it, verify it (tests/build/lint as applicable),
+  commit it (see the one-commit-per-story rule above), then move to the next
+  story. This makes the work easy to follow, review, and revert if needed.
+- Update the todo list to reflect progress at the story level, not just the
+  EPIC level, when a plan's todos map to EPICs containing multiple stories.
 
 ## Development
 
