@@ -1,0 +1,60 @@
+---
+description: Project overview, architecture, repo structure, and key tools for developer-hub-env
+alwaysApply: true
+---
+
+# developer-hub-env — Project Overview
+
+Red Hat Developer Hub (RHDH) deployed on OpenShift using GitOps.
+Ansible bootstraps OpenShift GitOps; ArgoCD then owns everything via App of Apps.
+
+Owner: Red Hat employee (Etienne Dubois). Clusters are ephemeral RHDP (opentlc) sandboxes.
+
+## Bootstrap Flow
+
+```
+1. Ansible bootstrap.yml
+   └── Installs OpenShift GitOps operator (Subscription CR)
+       └── Operator auto-creates default ArgoCD in openshift-gitops namespace
+   └── Pre-creates Sealed Secrets signing key (shared with devops-ai-agentic)
+   └── Applies the App-of-Apps ArgoCD Application CR
+
+3. ArgoCD (owns everything from here)
+   ├── Wave 1 — Sealed Secrets        (Bitnami Helm chart)
+   ├── Wave 2 — Developer Hub Operator (Subscription + OperatorGroup CRs)
+   └── Wave 3 — Developer Hub Instance (Backstage CR + app-config + plugins)
+```
+
+## Install Method per Component
+
+| Component | Method |
+|-----------|--------|
+| OpenShift GitOps (ArgoCD) | Ansible `Subscription` CR → operator auto-creates default ArgoCD |
+| Sealed Secrets | ArgoCD `Application` → Bitnami Helm chart (external repo) |
+| Developer Hub Operator | ArgoCD `Application` → `Subscription` + `OperatorGroup` CRs |
+| Developer Hub Instance | ArgoCD `Application` → `Backstage` CR + ConfigMaps |
+
+## Repository Layout
+
+```
+ansible/           # Bootstrap only — Ansible bootstraps, ArgoCD owns ongoing state
+  playbooks/bootstrap.yml
+  inventory/group_vars/all/
+    all.yml        # Non-sensitive defaults
+    vault.yml      # Ansible Vault encrypted (sealed secrets key)
+k8s/
+  argocd/          # Root ArgoCD Application (app-of-apps)
+  apps/            # Child ArgoCD Applications (one per component)
+  developer-hub/
+    operator/      # Operator namespace + OperatorGroup + Subscription
+    instance/      # Backstage CR + app-config ConfigMaps + SealedSecrets
+```
+
+## Key Tools
+
+- Ansible + `kubernetes.core` collection
+- `kubeseal` CLI (SealedSecrets)
+- `oc` CLI (OpenShift client)
+- OpenShift 4.x (RHDP sandbox)
+- RHDH operator — channel `fast`
+- OpenShift GitOps (ArgoCD) — default instance in `openshift-gitops` namespace

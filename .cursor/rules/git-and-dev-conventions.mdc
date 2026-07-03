@@ -1,0 +1,19 @@
+---
+description: Git commit conventions and development conventions for developer-hub-env
+alwaysApply: true
+---
+
+# Git & Development Conventions
+
+## Git
+
+- Never add `Co-Authored-By` lines to commit messages or pull request bodies.
+
+## Development
+
+- **Ansible bootstrap is minimal** — only bootstrap what ArgoCD cannot install itself
+- **Playbooks are idempotent** — safe to re-run at any time
+- **App of Apps pattern** — one root ArgoCD Application manages all child Applications
+- **Sync waves**: 1 = Sealed Secrets, 2 = Operator, 3 = Instance
+- **Secrets** in the repo use SealedSecrets (encrypted with the shared key) or Ansible Vault
+- **Keep concerns separate** — `ansible/` bootstraps cluster state; `k8s/` is owned by ArgoCD
