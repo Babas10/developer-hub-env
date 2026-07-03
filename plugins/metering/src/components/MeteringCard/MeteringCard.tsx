@@ -3,6 +3,7 @@ import { useEntity } from '@backstage/plugin-catalog-react';
 import { useApi } from '@backstage/core-plugin-api';
 import { meteringApiRef, CostResult } from '../../api';
 import { CpuChart } from '../charts/CpuChart';
+import { MemoryChart } from '../charts/MemoryChart';
 
 const ANNOTATION_K8S_NAMESPACE = 'backstage.io/kubernetes-namespace';
 const ANNOTATION_K8S_ID = 'backstage.io/kubernetes-id';
@@ -209,6 +210,12 @@ export function MeteringCardContent() {
           <CpuChart
             cpuCores={cost.cpuCores}
             cpuRequestCores={cost.cpuRequestCores}
+          />
+
+          <SectionTitle>Memory Usage</SectionTitle>
+          <MemoryChart
+            memGiB={cost.memGiB}
+            memRequestGiB={cost.memRequestGiB}
           />
         </>
       )}
