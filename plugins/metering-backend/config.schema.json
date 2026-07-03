@@ -1,0 +1,41 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Metering Plugin Config",
+  "type": "object",
+  "properties": {
+    "metering": {
+      "type": "object",
+      "required": ["prometheusUrl", "costModel"],
+      "properties": {
+        "prometheusUrl": {
+          "type": "string",
+          "description": "Base URL of the Prometheus instance (e.g. https://prometheus-k8s.openshift-monitoring.svc:9091)"
+        },
+        "windowHours": {
+          "type": "number",
+          "description": "Lookback window in hours for live cost queries (default: 24)",
+          "default": 24
+        },
+        "retentionDays": {
+          "type": "number",
+          "description": "Number of days to retain cost snapshots in the database (default: 90)",
+          "default": 90
+        },
+        "costModel": {
+          "type": "object",
+          "required": ["cpuCostPerCorePerHour", "memoryCostPerGBPerHour"],
+          "properties": {
+            "cpuCostPerCorePerHour": {
+              "type": "number",
+              "description": "Cost per CPU core per hour in USD (e.g. 0.048)"
+            },
+            "memoryCostPerGBPerHour": {
+              "type": "number",
+              "description": "Cost per GiB of memory per hour in USD (e.g. 0.006)"
+            }
+          }
+        }
+      }
+    }
+  }
+}
