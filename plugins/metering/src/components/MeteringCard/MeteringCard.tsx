@@ -4,6 +4,7 @@ import { useApi } from '@backstage/core-plugin-api';
 import { meteringApiRef, CostResult } from '../../api';
 import { CpuChart } from '../charts/CpuChart';
 import { MemoryChart } from '../charts/MemoryChart';
+import { CostDonut } from '../charts/CostDonut';
 
 const ANNOTATION_K8S_NAMESPACE = 'backstage.io/kubernetes-namespace';
 const ANNOTATION_K8S_ID = 'backstage.io/kubernetes-id';
@@ -216,6 +217,12 @@ export function MeteringCardContent() {
           <MemoryChart
             memGiB={cost.memGiB}
             memRequestGiB={cost.memRequestGiB}
+          />
+
+          <SectionTitle>Cost Breakdown</SectionTitle>
+          <CostDonut
+            cpuCostPerHour={cost.cpuCostPerHour}
+            memoryCostPerHour={cost.memoryCostPerHour}
           />
         </>
       )}
