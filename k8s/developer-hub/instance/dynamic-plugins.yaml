@@ -56,7 +56,39 @@ data:
                         allOf:
                           - isArgocdConfigured
 
-      # ── Tekton ────────────────────────────────────────────────────────────
+      # ── Metering (cost tracking) ──────────────────────────────────────────
+      # TODO: Replace <your-org> with your Quay.io org and push the OCI image first.
+      # Build commands:
+      #   cd plugins && ./export-dev.sh
+      #   npx @red-hat-developer-hub/cli@1.10 plugin package \
+      #     --tag quay.io/<your-org>/rhdh-plugin-metering-backend:1.0.0 \
+      #     --directory plugins/metering-backend/dist-dynamic
+      #   podman push quay.io/<your-org>/rhdh-plugin-metering-backend:1.0.0
+      # (repeat for plugins/metering/dist-dynamic)
+      - package: oci://quay.io/<your-org>/rhdh-plugin-metering-backend:1.0.0
+        disabled: true  # Enable after pushing OCI image
+
+      - package: oci://quay.io/<your-org>/rhdh-plugin-metering:1.0.0
+        disabled: true  # Enable after pushing OCI image
+        pluginConfig:
+          dynamicPlugins:
+            frontend:
+              internal.backstage-plugin-metering:
+                mountPoints:
+                  - mountPoint: entity.page.overview/cards
+                    importName: MeteringCard
+                    config:
+                      layout:
+                        gridColumnEnd:
+                          lg: span 4
+                          md: span 6
+                          xs: span 12
+                entityTabs:
+                  - path: /metering
+                    title: Cost
+                    mountPoint: entity.page.metering
+
+
       - package: oci://ghcr.io/redhat-developer/rhdh-plugin-export-overlays/backstage-community-plugin-tekton:bs_1.49.4__3.37.0
         disabled: false
         pluginConfig:
