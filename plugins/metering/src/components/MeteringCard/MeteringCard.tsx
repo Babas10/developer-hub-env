@@ -6,6 +6,7 @@ import { CpuChart } from '../charts/CpuChart';
 import { MemoryChart } from '../charts/MemoryChart';
 import { CostDonut } from '../charts/CostDonut';
 import { CostTrendChart } from '../charts/CostTrendChart';
+import { EfficiencyGauge } from '../charts/EfficiencyGauge';
 
 const ANNOTATION_K8S_NAMESPACE = 'backstage.io/kubernetes-namespace';
 const ANNOTATION_K8S_ID = 'backstage.io/kubernetes-id';
@@ -229,6 +230,14 @@ export function MeteringCardContent() {
           <CostDonut
             cpuCostPerHour={cost.cpuCostPerHour}
             memoryCostPerHour={cost.memoryCostPerHour}
+          />
+
+          <SectionTitle>Resource Efficiency</SectionTitle>
+          <EfficiencyGauge
+            cpuCores={cost.cpuCores}
+            cpuRequestCores={cost.cpuRequestCores}
+            memGiB={cost.memGiB}
+            memRequestGiB={cost.memRequestGiB}
           />
         </>
       )}
