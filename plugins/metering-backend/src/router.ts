@@ -20,7 +20,11 @@ export function createRouter(
 ): ExpressRouter {
   const router = Router();
 
-  const prometheusClient = new PrometheusClient(config.prometheusUrl, logger);
+  const prometheusClient = new PrometheusClient(
+    config.prometheusUrl,
+    logger,
+    config.bearerToken,
+  );
   const costCalculator = new CostCalculator(config);
 
   // 5-minute LRU cache keyed on namespace+deployment+window

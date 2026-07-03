@@ -11,6 +11,11 @@
           "type": "string",
           "description": "Base URL of the Prometheus instance (e.g. https://prometheus-k8s.openshift-monitoring.svc:9091)"
         },
+        "bearerToken": {
+          "type": "string",
+          "visibility": "secret",
+          "description": "Optional bearer token used to authenticate to Prometheus. Takes precedence over the in-cluster service account token; mainly useful for local development against a port-forwarded OpenShift Prometheus, which is not reachable from outside the cluster with the pod's own SA token."
+        },
         "windowHours": {
           "type": "number",
           "description": "Lookback window in hours for live cost queries (default: 24)",

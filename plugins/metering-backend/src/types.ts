@@ -7,6 +7,7 @@ export const costModelSchema = z.object({
 
 export const meteringConfigSchema = z.object({
   prometheusUrl: z.string().url(),
+  bearerToken: z.string().optional(),
   windowHours: z.number().positive().default(24),
   retentionDays: z.number().positive().default(90),
   costModel: costModelSchema,

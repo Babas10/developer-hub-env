@@ -37,6 +37,7 @@ for the deployed example):
 | `metering.retentionDays` | number | `90` | How long cost snapshots are kept in the DB |
 | `metering.costModel.cpuCostPerCorePerHour` | number (required) | — | USD cost per CPU core per hour |
 | `metering.costModel.memoryCostPerGBPerHour` | number (required) | — | USD cost per GiB of memory per hour |
+| `metering.bearerToken` | string (secret, optional) | — | Explicit bearer token for Prometheus. Only needed when the pod's own service-account token isn't available (e.g. local dev against a port-forwarded cluster Prometheus) — see below |
 
 The backend also requires cluster RBAC to read OpenShift monitoring metrics
 — see
@@ -58,14 +59,41 @@ yarn install
 # 4. (Optional) Port-forward OpenShift Prometheus for real metrics
 oc port-forward -n openshift-monitoring svc/prometheus-k8s 9091:9091
 
-# 5. Start rhdh-local
+# 5. Start rhdh-local — run these SEQUENTIALLY, not combined in one `up -d`.
+#    Starting them together races the installer against rhdh reading the
+#    same dynamic-plugins-root volume mid-(re)install, which silently breaks
+#    frontend plugin loading (scalprum manifest 404s).
 cd ../rhdh-local
-podman compose run install-dynamic-plugins
+podman compose run --rm install-dynamic-plugins   # wait for this to fully exit
 podman compose up rhdh
 ```
 
-Re-run `./export-dev.sh` after any source change, then restart the
-`rhdh` container to pick up the new build.
+Re-run `./export-dev.sh` after any source change, then repeat step 5
+(installer fully to completion, then `rhdh`) to pick up the new build.
+
+### Testing against real Prometheus data
+
+OpenShift's `prometheus-k8s` service is HTTPS-only (fronted by oauth-proxy
+with a cluster-internal, self-signed cert) and requires a bearer token even
+over a port-forward — the pod's own in-cluster service-account token (used
+automatically in production) isn't available inside the local podman
+container. To test with real metrics:
+
+1. Set `prometheusUrl: https://host.containers.internal:9091` (not `http://`)
+   in `rhdh-local/configs/app-config/app-config.local.yaml`.
+2. Put a token in the gitignored `rhdh-local/.env`:
+   ```
+   METERING_PROMETHEUS_TOKEN=<output of `oc whoami --show-token`>
+   ```
+   (any identity with the `cluster-monitoring-view` cluster role works), and
+   reference it from `app-config.local.yaml` as `bearerToken: ${METERING_PROMETHEUS_TOKEN}`.
+3. Add a dev-only `NODE_TLS_REJECT_UNAUTHORIZED: "0"` environment override
+   for the `rhdh` service in `compose.override.yaml` — needed to trust the
+   cluster's self-signed cert from outside the cluster. **Never use this
+   against a real deployment.**
+4. Annotate a catalog entity for a real, running Deployment (see
+   `rhdh-local/configs/catalog-entities/components.override.yaml` for an
+   example mirroring a real app) and view it in the Metering tab.
 
 ## Testing
 

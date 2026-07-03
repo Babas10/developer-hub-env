@@ -24,7 +24,11 @@ export function createSnapshotScheduler(
   catalog: CatalogService,
   auth: AuthService,
 ): void {
-  const prometheusClient = new PrometheusClient(config.prometheusUrl, logger);
+  const prometheusClient = new PrometheusClient(
+    config.prometheusUrl,
+    logger,
+    config.bearerToken,
+  );
   const costCalculator = new CostCalculator(config);
 
   // Prevent writing two snapshots within 50 min for the same entity (scheduler jitter guard)

@@ -19,13 +19,21 @@ function buildPodSelector(namespace: string, deployment: string): string {
 export class PrometheusClient {
   private readonly baseUrl: string;
   private readonly logger: LoggerService;
+  private readonly bearerToken?: string;
 
-  constructor(baseUrl: string, logger: LoggerService) {
+  constructor(baseUrl: string, logger: LoggerService, bearerToken?: string) {
     this.baseUrl = baseUrl.replace(/\/$/, '');
     this.logger = logger;
+    this.bearerToken = bearerToken;
   }
 
   private getToken(): string {
+    // An explicitly configured token (e.g. for local dev against a
+    // port-forwarded OpenShift Prometheus) always takes precedence over the
+    // in-cluster service account token.
+    if (this.bearerToken) {
+      return this.bearerToken;
+    }
     try {
       return fs.readFileSync(SA_TOKEN_PATH, 'utf8').trim();
     } catch {
