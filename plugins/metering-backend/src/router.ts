@@ -2,9 +2,11 @@ import Router from 'express-promise-router';
 import { Request, Response, Router as ExpressRouter } from 'express';
 import { LoggerService } from '@backstage/backend-plugin-api';
 import { LRUCache } from 'lru-cache';
+import { Knex } from 'knex';
 import { PrometheusClient } from './prometheusClient';
 import { CostCalculator } from './costCalculator';
 import { MeteringConfig, CostResult } from './types';
+import { getHistory } from './database';
 
 function parsePosInt(val: unknown, fallback: number): number {
   const n = parseInt(String(val), 10);
@@ -14,6 +16,7 @@ function parsePosInt(val: unknown, fallback: number): number {
 export function createRouter(
   config: MeteringConfig,
   logger: LoggerService,
+  knex: Knex,
 ): ExpressRouter {
   const router = Router();
 
@@ -68,6 +71,27 @@ export function createRouter(
 
     cache.set(cacheKey, result);
     res.json(result);
+  });
+
+  router.get('/cost/history', async (req: Request, res: Response) => {
+    const { entityRef } = req.query as Record<string, string>;
+
+    if (!entityRef) {
+      res.status(400).json({ error: 'Missing required query param: entityRef' });
+      return;
+    }
+
+    const days = parsePosInt(req.query.days, 30);
+    const history = await getHistory(knex, entityRef, days);
+
+    res.json(
+      history.map(s => ({
+        sampledAt: s.sampledAt.toISOString(),
+        hourlyCost: s.hourlyCost,
+        cpuCores: s.cpuCores,
+        memGiB: s.memGiB,
+      })),
+    );
   });
 
   return router;
