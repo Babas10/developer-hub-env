@@ -1,7 +1,7 @@
 {
   "name": "@internal/backstage-plugin-metering",
   "version": "0.1.0",
-  "description": "Backstage frontend plugin for application metering — displays CPU/memory cost cards and trend charts on catalog entities",
+  "description": "Backstage frontend plugin for application metering — displays a cost summary card on the Overview tab and a detailed Metering tab with CPU/memory cost KPIs and usage averages",
   "private": true,
   "backstage": {
     "role": "frontend-plugin"
@@ -16,10 +16,12 @@
   },
   "dependencies": {
     "@backstage/catalog-model": "^1.9.0",
+    "@backstage/core-components": "^0.18.11",
     "@backstage/core-plugin-api": "^1.12.7",
     "@backstage/frontend-plugin-api": "^0.17.2",
     "@backstage/plugin-catalog-react": "^3.1.0",
-    "recharts": "^2.15.3"
+    "@material-ui/core": "^4.12.4",
+    "@material-ui/icons": "^4.11.3"
   },
   "devDependencies": {
     "@backstage/cli": "^0.36.3",

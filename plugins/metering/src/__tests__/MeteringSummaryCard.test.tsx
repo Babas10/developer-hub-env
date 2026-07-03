@@ -1,7 +1,7 @@
 import React from 'react';
-import { render, screen, act, waitFor } from '@testing-library/react';
-import { MeteringCardContent } from '../components/MeteringCard/MeteringCard';
-import { TestApiProvider } from '@backstage/test-utils';
+import { screen, waitFor } from '@testing-library/react';
+import { MeteringSummaryCard } from '../components/MeteringSummaryCard';
+import { renderInTestApp, TestApiProvider } from '@backstage/test-utils';
 import { EntityProvider } from '@backstage/plugin-catalog-react';
 import { meteringApiRef, CostResult } from '../api';
 import { Entity } from '@backstage/catalog-model';
@@ -47,35 +47,34 @@ const mockMeteringApi = {
 };
 
 function renderCard(entity: Entity, api = mockMeteringApi) {
-  return render(
+  return renderInTestApp(
     <TestApiProvider apis={[[meteringApiRef, api]]}>
       <EntityProvider entity={entity}>
-        <MeteringCardContent />
+        <MeteringSummaryCard />
       </EntityProvider>
     </TestApiProvider>,
   );
 }
 
-describe('MeteringCardContent', () => {
+describe('MeteringSummaryCard', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('shows annotation guard message when kubernetes-namespace is absent', () => {
-    renderCard(mockEntityNoAnnotation);
+  it('shows annotation guard message when kubernetes-namespace is absent', async () => {
+    await renderCard(mockEntityNoAnnotation);
     expect(
-      screen.getByText(/backstage\.io\/kubernetes-namespace/),
-    ).toBeTruthy();
+      screen.getAllByText(/backstage\.io\/kubernetes-namespace/).length,
+    ).toBeGreaterThan(0);
   });
 
-  it('renders cost KPIs after loading', async () => {
-    await act(async () => {
-      renderCard(mockEntity);
-    });
+  it('renders hourly and monthly cost after loading', async () => {
+    await renderCard(mockEntity);
 
     await waitFor(() => {
-      expect(screen.getByText(/Hourly Cost/i)).toBeTruthy();
+      expect(screen.getByText('$0.0300')).toBeTruthy();
     });
+    expect(screen.getByText(/per month/i)).toBeTruthy();
   });
 
   it('displays error message when API fails', async () => {
@@ -84,12 +83,10 @@ describe('MeteringCardContent', () => {
       getCostHistory: jest.fn().mockResolvedValue([]),
     };
 
-    await act(async () => {
-      renderCard(mockEntity, failingApi);
-    });
+    await renderCard(mockEntity, failingApi);
 
     await waitFor(() => {
-      expect(screen.getByText(/Prometheus unreachable/i)).toBeTruthy();
+      expect(screen.getAllByText(/Prometheus unreachable/i).length).toBeGreaterThan(0);
     });
   });
 });

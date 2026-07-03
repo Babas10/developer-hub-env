@@ -7,7 +7,11 @@ component based on live CPU/memory usage pulled from Prometheus.
   applies a configurable cost model, exposes a REST API, and persists
   hourly cost snapshots to the RHDH database.
 - `metering/` — Backstage frontend plugin (New Frontend System): renders a
-  cost card with CPU/memory charts on the entity overview page.
+  compact cost summary card on the entity Overview tab, and a full-detail
+  "Metering" tab (side-by-side cost KPIs, resource efficiency, and
+  daily/weekly/monthly usage averages) — following the same
+  card-on-overview-plus-dedicated-tab pattern as the Kubernetes and ArgoCD
+  plugins.
 
 ## Annotation Guide
 
@@ -21,8 +25,9 @@ metadata:
     backstage.io/kubernetes-id: "my-deployment" # optional, falls back to entity name
 ```
 
-If `backstage.io/kubernetes-namespace` is missing, the `MeteringCard` shows a
-guidance message instead of cost data.
+If `backstage.io/kubernetes-namespace` is missing, both the Overview summary
+card and the Metering tab show a guidance message (via Backstage's standard
+`MissingAnnotationEmptyState`) instead of cost data.
 
 ## Config Reference
 

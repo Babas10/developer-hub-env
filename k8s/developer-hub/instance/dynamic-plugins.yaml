@@ -81,16 +81,21 @@ data:
                   - importName: meteringApiFactory
                 mountPoints:
                   - mountPoint: entity.page.overview/cards
-                    importName: MeteringCard
+                    importName: MeteringSummaryCard
                     config:
                       layout:
                         gridColumnEnd:
                           lg: span 4
                           md: span 6
                           xs: span 12
+                  - mountPoint: entity.page.metering/cards
+                    importName: MeteringTabContent
+                    config:
+                      layout:
+                        gridColumn: 1 / -1
                 entityTabs:
                   - path: /metering
-                    title: Cost
+                    title: Metering
                     mountPoint: entity.page.metering
 
 
