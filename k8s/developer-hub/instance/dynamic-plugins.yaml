@@ -74,6 +74,11 @@ data:
           dynamicPlugins:
             frontend:
               internal.backstage-plugin-metering:
+                apiFactories:
+                  # Registers meteringApiRef — required because this plugin is
+                  # wired via legacy mountPoints, so createFrontendPlugin's
+                  # ApiBlueprint extensions are never processed by the app.
+                  - importName: meteringApiFactory
                 mountPoints:
                   - mountPoint: entity.page.overview/cards
                     importName: MeteringCard
