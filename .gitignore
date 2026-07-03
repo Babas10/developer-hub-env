@@ -50,3 +50,13 @@ venv/
 # Temporary
 tmp/
 *.tmp
+
+# Plugin build artifacts
+plugins/*/node_modules/
+plugins/node_modules/
+plugins/**/dist/
+plugins/**/dist-dynamic/
+plugins/dist-types/
+plugins/**/.yarn/
+plugins/**/coverage/
+plugins/**/*.tsbuildinfo
