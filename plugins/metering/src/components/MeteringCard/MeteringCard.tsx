@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { useEntity } from '@backstage/plugin-catalog-react';
 import { useApi } from '@backstage/core-plugin-api';
-import { meteringApiRef, CostResult } from '../../api';
+import { meteringApiRef, CostResult, CostHistoryPoint } from '../../api';
 import { CpuChart } from '../charts/CpuChart';
 import { MemoryChart } from '../charts/MemoryChart';
 import { CostDonut } from '../charts/CostDonut';
+import { CostTrendChart } from '../charts/CostTrendChart';
 
 const ANNOTATION_K8S_NAMESPACE = 'backstage.io/kubernetes-namespace';
 const ANNOTATION_K8S_ID = 'backstage.io/kubernetes-id';
@@ -132,6 +133,11 @@ export function MeteringCardContent() {
     [namespace, deployment, entityRef, windowHours],
   );
 
+  const historyState = useAsync<CostHistoryPoint[]>(
+    () => meteringApi.getCostHistory({ entityRef, days: 30 }),
+    [entityRef],
+  );
+
   if (!namespace) {
     return (
       <div
@@ -225,6 +231,13 @@ export function MeteringCardContent() {
             memoryCostPerHour={cost.memoryCostPerHour}
           />
         </>
+      )}
+
+      <SectionTitle>30-Day Cost Trend</SectionTitle>
+      {historyState.loading ? (
+        <div style={{ color: '#888', fontSize: 13 }}>Loading history…</div>
+      ) : (
+        <CostTrendChart history={historyState.value ?? []} />
       )}
     </div>
   );
