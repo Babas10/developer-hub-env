@@ -32,6 +32,11 @@
           "description": "Number of days to retain cost snapshots in the database (default: 90)",
           "default": 90
         },
+        "rollupAfterDays": {
+          "type": "number",
+          "description": "Hourly snapshot rows older than this many days are aggregated into monthly rollups and removed from the snapshots table (ADR-05). Default: 30.",
+          "default": 30
+        },
         "costModel": {
           "type": "object",
           "required": ["cpuCostPerCorePerHour", "memoryCostPerGBPerHour"],

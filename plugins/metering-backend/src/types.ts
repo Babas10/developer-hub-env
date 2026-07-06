@@ -16,6 +16,7 @@ export const meteringConfigSchema = z.object({
   chargeMode: chargeModeSchema,
   windowHours: z.number().positive().default(24),
   retentionDays: z.number().positive().default(90),
+  rollupAfterDays: z.number().positive().default(30),
   costModel: costModelSchema,
 });
 
@@ -41,6 +42,20 @@ export interface CostResult {
   replicaCount: number;
   windowHours: number;
   sampledAt: string;
+}
+
+export interface MonthlyRollup {
+  id: number;
+  entityRef: string;
+  namespace: string;
+  deployment: string;
+  monthStart: Date;
+  avgCpuCores: number;
+  avgMemGiB: number;
+  avgGpuCount: number;
+  totalCost: number;
+  sampleCount: number;
+  createdAt: Date;
 }
 
 export interface CostSnapshot {
