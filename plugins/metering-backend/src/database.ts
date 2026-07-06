@@ -1,17 +1,24 @@
+import path from 'path';
 import { Knex } from 'knex';
 import { CostSnapshot } from './types';
 
+/**
+ * Run all pending Knex migrations from the migrations/ directory.
+ *
+ * Knex tracks applied migrations in a `knex_migrations` table it manages
+ * automatically — this call is idempotent and safe to re-run on every
+ * plugin startup.
+ *
+ * To add a new migration: create migrations/NNN_<description>.ts with an
+ * `up` function (and optionally a `down` function for rollbacks).
+ */
 export async function runMigrations(knex: Knex): Promise<void> {
-  await knex.schema.createTableIfNotExists('cost_snapshots', table => {
-    table.increments('id').primary();
-    table.text('entity_ref').notNullable();
-    table.text('namespace').notNullable();
-    table.text('deployment').notNullable();
-    table.float('cpu_cores').notNullable();
-    table.float('mem_gib').notNullable();
-    table.float('hourly_cost').notNullable();
-    table.timestamp('sampled_at').notNullable().defaultTo(knex.fn.now());
-    table.index(['entity_ref', 'sampled_at']);
+  const migrationsDir = path.resolve(__dirname, 'migrations');
+  await knex.migrate.latest({
+    directory: migrationsDir,
+    // Knex needs a require hook for .ts files during local dev; in the compiled
+    // plugin the migrations are already .js files in the same relative path.
+    loadExtensions: ['.js', '.ts'],
   });
 }
 
