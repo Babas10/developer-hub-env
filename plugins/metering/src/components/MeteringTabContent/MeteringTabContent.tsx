@@ -19,6 +19,7 @@ import { formatUsd } from '../common/format';
 import { KpiTile } from './KpiTile';
 import { UtilizationBar } from './UtilizationBar';
 import { AverageCard } from './AverageCard';
+import { CostDonut } from './CostDonut';
 
 type WindowOption = { label: string; hours: number };
 const WINDOW_OPTIONS: WindowOption[] = [
@@ -139,7 +140,8 @@ export function MeteringTabContent() {
 
           <Grid item>
             <InfoCard title="Cost Breakdown">
-              <Grid container spacing={2}>
+              <CostDonut cost={cost} />
+              <Grid container spacing={2} style={{ marginTop: 8 }}>
                 <Grid item xs={12} sm={4}>
                   <KpiTile
                     icon={<DeveloperBoardIcon fontSize="small" color="action" />}
