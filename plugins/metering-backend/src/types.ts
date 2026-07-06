@@ -17,7 +17,7 @@ export const meteringConfigSchema = z
     chargeMode: chargeModeSchema,
     windowHours: z.number().positive().default(24),
     retentionDays: z.number().positive().default(90),
-    rollupAfterDays: z.number().positive().default(30),
+    rollupAfterDays: z.number().nonnegative().default(30),
     costModel: costModelSchema,
   })
   .refine(data => data.rollupAfterDays < data.retentionDays, {
