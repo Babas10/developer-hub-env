@@ -1,0 +1,32 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: resource-burner
+  namespace: openshift-gitops
+  labels:
+    app: resource-burner
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+spec:
+  project: apps-demo
+  source:
+    repoURL: https://github.com/Babas10/developer-hub-env
+    targetRevision: main
+    path: k8s/resource-burner
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: agent-apps
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 30s
+        factor: 2
+        maxDuration: 5m

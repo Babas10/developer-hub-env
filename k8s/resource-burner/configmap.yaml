@@ -1,0 +1,91 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: resource-burner-script
+  namespace: agent-apps
+data:
+  burner.py: |
+    #!/usr/bin/env python3
+    """
+    Resource Burner — cycles between high and low CPU/memory consumption.
+
+    HIGH phase (default 2 h): allocates MEMORY_HIGH_MB of RSS and runs
+    CPU_THREADS busy-loop threads to generate sustained load.
+
+    LOW phase  (default 30 min): releases all allocated memory and stops
+    CPU threads so the pod idles at near-zero usage.
+
+    All durations and sizes are configurable via environment variables.
+    """
+    import gc
+    import math
+    import os
+    import threading
+    import time
+
+    HIGH_DURATION_S = int(os.getenv("HIGH_DURATION_S", str(2 * 3600)))   # 2 h
+    LOW_DURATION_S  = int(os.getenv("LOW_DURATION_S",  str(30 * 60)))    # 30 min
+    MEMORY_HIGH_MB  = int(os.getenv("MEMORY_HIGH_MB",  "512"))
+    MEMORY_LOW_MB   = int(os.getenv("MEMORY_LOW_MB",   "32"))
+    CPU_THREADS     = int(os.getenv("CPU_THREADS",     "2"))
+
+
+    def cpu_worker(stop_event):
+        """Burn CPU until stop_event is set."""
+        x = 1.0
+        while not stop_event.is_set():
+            for _ in range(50_000):
+                x = math.sqrt(abs(math.sin(x) * math.cos(x) + 1.0001))
+
+
+    def allocate_memory(mb):
+        """Allocate mb megabytes and touch every page to force physical RSS."""
+        buf = bytearray(mb * 1024 * 1024)
+        for i in range(0, len(buf), 4096):
+            buf[i] = 0xAB
+        return buf
+
+
+    def run_phase(label, duration_s, memory_mb, n_threads):
+        print(
+            f"[{label}] start — duration={duration_s}s  "
+            f"memory={memory_mb}MB  cpu_threads={n_threads}",
+            flush=True,
+        )
+        buf = allocate_memory(memory_mb)
+        stop_event = threading.Event()
+        workers = [
+            threading.Thread(target=cpu_worker, args=(stop_event,), daemon=True)
+            for _ in range(n_threads)
+        ]
+        for w in workers:
+            w.start()
+        try:
+            time.sleep(duration_s)
+        finally:
+            stop_event.set()
+            for w in workers:
+                w.join(timeout=10)
+            del buf
+            gc.collect()
+        print(f"[{label}] done", flush=True)
+
+
+    def main():
+        print(
+            f"Resource burner starting — "
+            f"HIGH={HIGH_DURATION_S}s/{MEMORY_HIGH_MB}MB/{CPU_THREADS} threads  "
+            f"LOW={LOW_DURATION_S}s/{MEMORY_LOW_MB}MB/0 threads",
+            flush=True,
+        )
+        cycle = 0
+        while True:
+            cycle += 1
+            print(f"=== Cycle {cycle} ===", flush=True)
+            run_phase("HIGH", HIGH_DURATION_S, MEMORY_HIGH_MB, CPU_THREADS)
+            run_phase("LOW",  LOW_DURATION_S,  MEMORY_LOW_MB,  0)
+
+
+    if __name__ == "__main__":
+        main()

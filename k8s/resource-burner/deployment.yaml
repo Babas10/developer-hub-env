@@ -1,0 +1,50 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: resource-burner
+  namespace: agent-apps
+  labels:
+    app: resource-burner
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: resource-burner
+  template:
+    metadata:
+      labels:
+        app: resource-burner
+    spec:
+      containers:
+        - name: burner
+          image: registry.redhat.io/ubi9/python-311:latest
+          command: ["python3", "/scripts/burner.py"]
+          env:
+            # HIGH phase: 2 hours of sustained CPU + memory load
+            - name: HIGH_DURATION_S
+              value: "7200"
+            - name: MEMORY_HIGH_MB
+              value: "512"
+            - name: CPU_THREADS
+              value: "2"
+            # LOW phase: 30 minutes of near-idle
+            - name: LOW_DURATION_S
+              value: "1800"
+            - name: MEMORY_LOW_MB
+              value: "32"
+          resources:
+            requests:
+              cpu: 500m
+              memory: 128Mi
+            limits:
+              cpu: "2"
+              memory: 700Mi
+          volumeMounts:
+            - name: script
+              mountPath: /scripts
+      volumes:
+        - name: script
+          configMap:
+            name: resource-burner-script
+            defaultMode: 0755
