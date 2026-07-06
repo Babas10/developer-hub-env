@@ -95,6 +95,8 @@ export function createSnapshotScheduler(
             cpuCores: result.cpuCores,
             memGiB: result.memGiB,
             hourlyCost: result.hourlyCost,
+            gpuCount: result.gpuCount,
+            gpuCost: result.gpuCostPerHour,
           });
 
           snapshotCache.set(entityRef, true);

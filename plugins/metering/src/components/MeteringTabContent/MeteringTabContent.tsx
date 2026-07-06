@@ -126,6 +126,14 @@ export function MeteringTabContent() {
                 total={cost.memRequestGiB}
                 unit="GiB"
               />
+              {cost.gpuCount > 0 && (
+                <UtilizationBar
+                  label="GPU"
+                  used={cost.gpuCount}
+                  total={cost.gpuCount}
+                  unit="GPU-equiv"
+                />
+              )}
             </InfoCard>
           </Grid>
 
@@ -152,8 +160,8 @@ export function MeteringTabContent() {
                   <KpiTile
                     icon={<AttachMoneyIcon fontSize="small" color="action" />}
                     label="GPU $/hr"
-                    value={formatUsd(0)}
-                    sub="GPU not configured"
+                    value={cost.gpuCount > 0 ? formatUsd(cost.gpuCostPerHour) : '—'}
+                    sub={cost.gpuCount > 0 ? `${cost.gpuCount.toFixed(2)} GPU-equiv` : 'No GPU workload'}
                   />
                 </Grid>
               </Grid>

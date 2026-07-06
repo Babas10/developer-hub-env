@@ -33,6 +33,8 @@ export async function insertSnapshot(
     cpu_cores: snapshot.cpuCores,
     mem_gib: snapshot.memGiB,
     hourly_cost: snapshot.hourlyCost,
+    gpu_count: snapshot.gpuCount,
+    gpu_cost: snapshot.gpuCost,
     sampled_at: new Date(),
   });
 }
@@ -60,6 +62,8 @@ export async function getHistory(
       cpu_cores: number;
       mem_gib: number;
       hourly_cost: number;
+      gpu_count: number;
+      gpu_cost: number;
       sampled_at: Date;
     }) => ({
       id: r.id,
@@ -69,6 +73,8 @@ export async function getHistory(
       cpuCores: r.cpu_cores,
       memGiB: r.mem_gib,
       hourlyCost: r.hourly_cost,
+      gpuCount: r.gpu_count ?? 0,
+      gpuCost: r.gpu_cost ?? 0,
       sampledAt: new Date(r.sampled_at),
     }),
   );

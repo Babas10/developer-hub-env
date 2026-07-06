@@ -80,6 +80,9 @@ data:
         # Tune these rates to match your cloud or on-prem cost model (USD per unit per hour)
         cpuCostPerCorePerHour: 0.048
         memoryCostPerGBPerHour: 0.006
+        # Set gpuCostPerGpuPerHour > 0 only when GPU nodes run DCGM Exporter.
+        # Example: 2.48 for an AWS p3.2xlarge V100 GPU fraction.
+        gpuCostPerGpuPerHour: 0
 
     catalog:
       locations:

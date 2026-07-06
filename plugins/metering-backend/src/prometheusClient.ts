@@ -10,6 +10,8 @@ export interface PrometheusMetrics {
   memRequestGiB: number;
   cpuLimitCores: number;
   memLimitGiB: number;
+  gpuCount: number;
+  gpuMemGiB: number;
   replicaCount: number;
 }
 
@@ -93,7 +95,7 @@ export class PrometheusClient {
 
     const podSel = `namespace="${namespace}",pod=~"${deployment}-[a-z0-9]+-[a-z0-9]+"`;
 
-    const [cpuCores, memBytes, cpuRequestCores, memRequestBytes, cpuLimitCores, memLimitBytes, replicaCount] =
+    const [cpuCores, memBytes, cpuRequestCores, memRequestBytes, cpuLimitCores, memLimitBytes, gpuUtil, gpuMemBytes, replicaCount] =
       await Promise.all([
         this.query(
           `sum(rate(container_cpu_usage_seconds_total{${sel}}[${window}]))`,
@@ -111,6 +113,13 @@ export class PrometheusClient {
         this.query(
           `sum(kube_pod_container_resource_limits{${podSel},resource="memory"})`,
         ),
+        // NVIDIA DCGM Exporter — returns 0 gracefully when the exporter is absent
+        this.query(
+          `sum(DCGM_FI_DEV_GPU_UTIL{namespace="${namespace}",pod=~"${deployment}-.+"}) / 100`,
+        ),
+        this.query(
+          `sum(DCGM_FI_DEV_FB_USED{namespace="${namespace}",pod=~"${deployment}-.+"}) * 1048576`,
+        ),
         this.query(
           `kube_deployment_status_replicas{namespace="${namespace}",deployment="${deployment}"}`,
         ),
@@ -123,6 +132,8 @@ export class PrometheusClient {
       memRequestGiB: memRequestBytes / 1024 ** 3,
       cpuLimitCores,
       memLimitGiB: memLimitBytes / 1024 ** 3,
+      gpuCount: gpuUtil,
+      gpuMemGiB: gpuMemBytes / 1024 ** 3,
       replicaCount: Math.round(replicaCount),
     };
   }

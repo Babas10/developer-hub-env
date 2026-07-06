@@ -44,6 +44,10 @@ const meteringPlugin = createBackendPlugin({
             memoryCostPerGBPerHour: rawConfig
               .getConfig('costModel')
               .getNumber('memoryCostPerGBPerHour'),
+            gpuCostPerGpuPerHour:
+              rawConfig
+                .getConfig('costModel')
+                .getOptionalNumber('gpuCostPerGpuPerHour') ?? 0,
           },
         });
 

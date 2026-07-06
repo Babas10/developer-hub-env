@@ -7,6 +7,7 @@ export type ChargeMode = z.infer<typeof chargeModeSchema>;
 export const costModelSchema = z.object({
   cpuCostPerCorePerHour: z.number().positive(),
   memoryCostPerGBPerHour: z.number().positive(),
+  gpuCostPerGpuPerHour: z.number().nonnegative().default(0),
 });
 
 export const meteringConfigSchema = z.object({
@@ -27,8 +28,11 @@ export interface CostResult {
   chargeMode: ChargeMode;
   cpuCores: number;
   memGiB: number;
+  gpuCount: number;
+  gpuMemGiB: number;
   cpuCostPerHour: number;
   memoryCostPerHour: number;
+  gpuCostPerHour: number;
   hourlyCost: number;
   cpuRequestCores: number;
   memRequestGiB: number;
@@ -47,5 +51,7 @@ export interface CostSnapshot {
   cpuCores: number;
   memGiB: number;
   hourlyCost: number;
+  gpuCount: number;
+  gpuCost: number;
   sampledAt: Date;
 }

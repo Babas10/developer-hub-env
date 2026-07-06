@@ -8,6 +8,8 @@ const baseMetrics = {
   memRequestGiB: 4,
   cpuLimitCores: 2,
   memLimitGiB: 8,
+  gpuCount: 0,
+  gpuMemGiB: 0,
   replicaCount: 2,
 };
 
@@ -82,12 +84,15 @@ describe('CostCalculator', () => {
       memRequestGiB: 0,
       cpuLimitCores: 0,
       memLimitGiB: 0,
+      gpuCount: 0,
+      gpuMemGiB: 0,
       replicaCount: 0,
     });
 
     expect(result.hourlyCost).toBe(0);
     expect(result.cpuCostPerHour).toBe(0);
     expect(result.memoryCostPerHour).toBe(0);
+    expect(result.gpuCostPerHour).toBe(0);
   });
 
   it('uses custom cost model rates', () => {
@@ -134,5 +139,36 @@ describe('CostCalculator', () => {
 
     expect(daily).toBeCloseTo((0.048 + 0.006) * 24);
     expect(monthly).toBeCloseTo((0.048 + 0.006) * 24 * 30);
+  });
+
+  it('adds GPU cost when gpuCount > 0 and gpuCostPerGpuPerHour is configured', () => {
+    const calc = new CostCalculator(
+      makeConfig({
+        chargeMode: 'usage',
+        costModel: { cpuCostPerCorePerHour: 0.048, memoryCostPerGBPerHour: 0.006, gpuCostPerGpuPerHour: 2.0 },
+      }),
+    );
+    const result = calc.calculate('component:default/gpu-app', 'ns', 'gpu-app', {
+      ...baseMetrics,
+      gpuCount: 1.5,
+      gpuMemGiB: 8,
+    });
+
+    expect(result.gpuCostPerHour).toBeCloseTo(1.5 * 2.0);
+    expect(result.hourlyCost).toBeCloseTo(
+      0.5 * 0.048 + 2 * 0.006 + 1.5 * 2.0,
+    );
+    expect(result.gpuCount).toBe(1.5);
+    expect(result.gpuMemGiB).toBe(8);
+  });
+
+  it('GPU cost is zero when gpuCostPerGpuPerHour is 0 (default)', () => {
+    const calc = new CostCalculator(makeConfig());
+    const result = calc.calculate('component:default/app', 'ns', 'app', {
+      ...baseMetrics,
+      gpuCount: 2,
+    });
+
+    expect(result.gpuCostPerHour).toBe(0);
   });
 });

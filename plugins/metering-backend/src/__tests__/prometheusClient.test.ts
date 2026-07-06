@@ -31,7 +31,8 @@ describe('PrometheusClient', () => {
   });
 
   it('returns parsed metrics from Prometheus', async () => {
-    // Each of the 7 queries returns a distinct value (cpu, mem, cpuReq, memReq, cpuLimit, memLimit, replicas)
+    // Each of the 9 queries returns a distinct value
+    // (cpu, mem, cpuReq, memReq, cpuLimit, memLimit, gpuUtil, gpuMem, replicas)
     mockFetch
       .mockResolvedValueOnce({ ok: true, json: async () => makePrometheusResponse('0.5') })  // CPU usage
       .mockResolvedValueOnce({ ok: true, json: async () => makePrometheusResponse(String(2 * 1024 ** 3)) })  // Mem bytes → 2 GiB
@@ -39,6 +40,8 @@ describe('PrometheusClient', () => {
       .mockResolvedValueOnce({ ok: true, json: async () => makePrometheusResponse(String(4 * 1024 ** 3)) })  // Mem requests
       .mockResolvedValueOnce({ ok: true, json: async () => makePrometheusResponse('2.0') })  // CPU limits
       .mockResolvedValueOnce({ ok: true, json: async () => makePrometheusResponse(String(8 * 1024 ** 3)) })  // Mem limits
+      .mockResolvedValueOnce({ ok: true, json: async () => makePrometheusResponse('0') })  // GPU util (no GPU)
+      .mockResolvedValueOnce({ ok: true, json: async () => makePrometheusResponse('0') })  // GPU mem (no GPU)
       .mockResolvedValueOnce({ ok: true, json: async () => makePrometheusResponse('3') });  // Replicas
 
     const metrics = await client.getMetrics('my-ns', 'my-app', 24);
@@ -49,6 +52,8 @@ describe('PrometheusClient', () => {
     expect(metrics.memRequestGiB).toBeCloseTo(4);
     expect(metrics.cpuLimitCores).toBeCloseTo(2.0);
     expect(metrics.memLimitGiB).toBeCloseTo(8);
+    expect(metrics.gpuCount).toBe(0);
+    expect(metrics.gpuMemGiB).toBe(0);
     expect(metrics.replicaCount).toBe(3);
   });
 

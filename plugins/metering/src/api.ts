@@ -14,8 +14,11 @@ export interface CostResult {
   chargeMode: ChargeMode;
   cpuCores: number;
   memGiB: number;
+  gpuCount: number;
+  gpuMemGiB: number;
   cpuCostPerHour: number;
   memoryCostPerHour: number;
+  gpuCostPerHour: number;
   hourlyCost: number;
   cpuRequestCores: number;
   memRequestGiB: number;

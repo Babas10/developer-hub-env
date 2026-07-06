@@ -43,6 +43,11 @@
             "memoryCostPerGBPerHour": {
               "type": "number",
               "description": "Cost per GiB of memory per hour in USD (e.g. 0.006)"
+            },
+            "gpuCostPerGpuPerHour": {
+              "type": "number",
+              "default": 0,
+              "description": "Cost per GPU (fractional GPU-hours) per hour in USD. Set to 0 (default) when no GPU workloads run on the cluster. Example: 2.48 for an AWS p3.2xlarge V100 GPU fraction."
             }
           }
         }

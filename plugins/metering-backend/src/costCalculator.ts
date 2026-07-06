@@ -52,6 +52,7 @@ export class CostCalculator {
 
     const cpuCostPerHour = billableCpu * cpuCostPerCorePerHour;
     const memoryCostPerHour = billableMem * memoryCostPerGBPerHour;
+    const gpuCostPerHour = metrics.gpuCount * (this.config.costModel.gpuCostPerGpuPerHour ?? 0);
 
     return {
       entityRef,
@@ -60,9 +61,12 @@ export class CostCalculator {
       chargeMode: mode,
       cpuCores: metrics.cpuCores,
       memGiB: metrics.memGiB,
+      gpuCount: metrics.gpuCount,
+      gpuMemGiB: metrics.gpuMemGiB,
       cpuCostPerHour,
       memoryCostPerHour,
-      hourlyCost: cpuCostPerHour + memoryCostPerHour,
+      gpuCostPerHour,
+      hourlyCost: cpuCostPerHour + memoryCostPerHour + gpuCostPerHour,
       cpuRequestCores: metrics.cpuRequestCores,
       memRequestGiB: metrics.memRequestGiB,
       cpuLimitCores: metrics.cpuLimitCores,

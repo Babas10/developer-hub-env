@@ -32,8 +32,11 @@ const mockCostResult: CostResult = {
   chargeMode: 'max',
   cpuCores: 0.5,
   memGiB: 1.0,
+  gpuCount: 0,
+  gpuMemGiB: 0,
   cpuCostPerHour: 0.024,
   memoryCostPerHour: 0.006,
+  gpuCostPerHour: 0,
   hourlyCost: 0.03,
   cpuRequestCores: 1.0,
   memRequestGiB: 2.0,
@@ -113,6 +116,25 @@ describe('MeteringTabContent', () => {
     expect(screen.getByText('CPU $/hr')).toBeTruthy();
     expect(screen.getByText('Memory $/hr')).toBeTruthy();
     expect(screen.getByText('GPU $/hr')).toBeTruthy();
+  });
+
+  it('shows real GPU tile when gpuCount > 0', async () => {
+    const gpuApi = buildApi({
+      getCost: jest.fn().mockResolvedValue({
+        ...mockCostResult,
+        gpuCount: 1.5,
+        gpuMemGiB: 8,
+        gpuCostPerHour: 3.72,
+        hourlyCost: mockCostResult.hourlyCost + 3.72,
+      }),
+    });
+
+    await renderTab(mockEntity, gpuApi);
+
+    await waitFor(() => {
+      expect(screen.getByText('GPU $/hr')).toBeTruthy();
+    });
+    expect(screen.getAllByText(/1\.50 GPU-equiv/).length).toBeGreaterThan(0);
   });
 
   it('displays error message when API fails', async () => {
