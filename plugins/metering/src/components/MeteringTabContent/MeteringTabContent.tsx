@@ -20,6 +20,7 @@ import { KpiTile } from './KpiTile';
 import { UtilizationBar } from './UtilizationBar';
 import { AverageCard } from './AverageCard';
 import { CostDonut } from './CostDonut';
+import { CostTrendChart } from './CostTrendChart';
 
 type WindowOption = { label: string; hours: number };
 const WINDOW_OPTIONS: WindowOption[] = [
@@ -35,7 +36,7 @@ const WINDOW_OPTIONS: WindowOption[] = [
  */
 export function MeteringTabContent() {
   const [windowHours, setWindowHours] = useState(24);
-  const { namespace, deployment, costState, averages } =
+  const { namespace, deployment, costState, historyState, averages } =
     useMeteringData(windowHours);
 
   if (!namespace) {
@@ -171,6 +172,12 @@ export function MeteringTabContent() {
           </Grid>
         </>
       )}
+
+      <Grid item>
+        <InfoCard title="30-Day Cost Trend">
+          <CostTrendChart historyState={historyState} />
+        </InfoCard>
+      </Grid>
 
       <Grid item>
         <Typography variant="h6" gutterBottom>
