@@ -420,6 +420,116 @@ the previously accumulated data. Use explicit additive expressions instead:
 The `excluded` pseudo-table is supported identically by both SQLite and
 PostgreSQL in `ON CONFLICT ... DO UPDATE` clauses.
 
+## 4.6 Frontend charts (Recharts)
+
+The metering plugin uses **Recharts** for cost visualisation. Recharts was
+chosen because it has a declarative React API, tree-shakes well (~150 KB
+for the components actually used), and its colour and font props accept
+plain strings that integrate naturally with the Material UI palette used
+everywhere else in the plugin.
+
+### Two chart components
+
+| Component | Chart type | Data source |
+|-----------|-----------|-------------|
+| `CostDonut` | `PieChart` with `innerRadius` (donut) | `costState.value` — live Prometheus snapshot |
+| `CostTrendChart` | `LineChart` | `historyState.value` — 30-day `/cost/history` series |
+
+Both live under `src/components/MeteringTabContent/` and are mounted
+inside `MeteringTabContent` as InfoCard children.
+
+### Data already in the hook
+
+`useMeteringData(windowHours)` fetches **both** the live cost snapshot and
+the history series on every render:
+
+```typescript
+const costState   = useAsync(() => meteringApi.getCost({ ... }), [...]);
+const historyState = useAsync(() => meteringApi.getCostHistory({ entityRef, days: 30 }), [...]);
+```
+
+Both `AsyncState` objects (`{ value, loading, error }`) are returned from
+the hook and destructured in `MeteringTabContent`:
+
+```typescript
+const { namespace, deployment, costState, historyState, averages } =
+  useMeteringData(windowHours);
+```
+
+This means adding a new chart never requires a new API call — the data is
+already available. Just destructure the relevant state and pass it as a prop.
+
+### CostDonut — PieChart (donut) for cost split
+
+`CostDonut` takes a `CostResult` and renders a donut PieChart with one
+slice per resource type (CPU / Memory / GPU). The GPU slice is omitted
+automatically when `gpuCostPerHour === 0`:
+
+```typescript
+const slices = SLICE_DEFS
+  .map(d => ({ name: d.name, value: d.getVal(cost), color: d.color }))
+  .filter(s => s.value > 0);   // hide zero-cost resource types
+```
+
+### CostTrendChart — LineChart for 30-day history
+
+`CostTrendChart` receives the `historyState` object directly and renders
+a `LineChart` of `hourlyCost` over time. The history data comes from
+`getHistory()` on the backend, which UNIONs hourly snapshots and monthly
+rollup rows transparently — the chart sees a single sorted series
+regardless of how old the data is:
+
+```typescript
+const data: ChartPoint[] = points.map(p => ({
+  label: formatAxisDate(p.sampledAt),   // "Jun 15", "May 1", ...
+  cost: p.hourlyCost,
+}));
+```
+
+### Graceful states
+
+Every chart component handles all three non-data states before rendering:
+
+```typescript
+if (historyState.loading) return <Progress />;
+if (historyState.error)   return <Typography color="error">...</Typography>;
+if (points.length === 0)  return <Typography color="textSecondary">...</Typography>;
+// only now render the chart
+```
+
+This pattern must be followed for every chart — Recharts will silently
+render an empty SVG if passed an empty `data` array, which looks broken
+rather than informative.
+
+### Custom tooltip — avoid importing `TooltipProps` from recharts
+
+Recharts ships TypeScript types, but the `TooltipProps` generic changed
+between major versions (v2 → v3). Importing it directly will break type
+checking when recharts is upgraded. Instead, define a minimal local
+interface that matches only the props your tooltip actually uses:
+
+```typescript
+// Instead of: import type { TooltipProps } from 'recharts';
+interface DonutTooltipProps {
+  active?: boolean;
+  payload?: Array<{ name?: string; value?: number }>;
+}
+
+function DonutTooltip({ active, payload }: DonutTooltipProps) {
+  if (!active || !payload?.length) return null;
+  // ...
+}
+```
+
+Pass the component via the `content` prop:
+```tsx
+<Tooltip content={<DonutTooltip />} />
+```
+
+Recharts injects `active`, `payload`, and `label` at runtime regardless of
+what TypeScript type the component declares — the local interface is just
+for compile-time safety.
+
 ## 5. Config schema validation
 
 Two layers validate plugin config, and it's worth knowing both:
