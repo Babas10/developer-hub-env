@@ -8,7 +8,6 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { Typography } from '@material-ui/core';
-import type { TooltipProps } from 'recharts';
 import { CostResult } from '../../api';
 import { formatUsd } from '../common/format';
 
@@ -26,7 +25,12 @@ const SLICE_DEFS = [
   { name: 'GPU',    getVal: (c: CostResult) => c.gpuCostPerHour,    color: '#f57c00' },
 ];
 
-function DonutTooltip({ active, payload }: TooltipProps<number, string>) {
+interface DonutTooltipProps {
+  active?: boolean;
+  payload?: Array<{ name?: string; value?: number }>;
+}
+
+function DonutTooltip({ active, payload }: DonutTooltipProps) {
   if (!active || !payload?.length) return null;
   const { name, value } = payload[0];
   return (

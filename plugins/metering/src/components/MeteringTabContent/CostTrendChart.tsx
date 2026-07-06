@@ -10,7 +10,6 @@ import {
 } from 'recharts';
 import { Typography } from '@material-ui/core';
 import { Progress } from '@backstage/core-components';
-import type { TooltipProps } from 'recharts';
 import { CostHistoryPoint } from '../../api';
 import { formatUsd } from '../common/format';
 
@@ -26,7 +25,13 @@ function formatAxisDate(isoStr: string): string {
   });
 }
 
-function TrendTooltip({ active, payload, label }: TooltipProps<number, string>) {
+interface TrendTooltipProps {
+  active?: boolean;
+  payload?: Array<{ value?: number }>;
+  label?: string;
+}
+
+function TrendTooltip({ active, payload, label }: TrendTooltipProps) {
   if (!active || !payload?.length) return null;
   return (
     <div
