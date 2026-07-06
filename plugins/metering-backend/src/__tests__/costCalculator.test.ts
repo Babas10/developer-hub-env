@@ -1,39 +1,87 @@
 import { CostCalculator } from '../costCalculator';
 import { MeteringConfig } from '../types';
 
-const baseConfig: MeteringConfig = {
-  prometheusUrl: 'http://prometheus:9090',
-  windowHours: 24,
-  retentionDays: 90,
-  costModel: {
-    cpuCostPerCorePerHour: 0.048,
-    memoryCostPerGBPerHour: 0.006,
-  },
+const baseMetrics = {
+  cpuCores: 0.5,
+  memGiB: 2,
+  cpuRequestCores: 1,
+  memRequestGiB: 4,
+  cpuLimitCores: 2,
+  memLimitGiB: 8,
+  replicaCount: 2,
 };
 
-describe('CostCalculator', () => {
-  const calc = new CostCalculator(baseConfig);
+function makeConfig(overrides: Partial<MeteringConfig> = {}): MeteringConfig {
+  return {
+    prometheusUrl: 'http://prometheus:9090',
+    chargeMode: 'max',
+    windowHours: 24,
+    retentionDays: 90,
+    costModel: {
+      cpuCostPerCorePerHour: 0.048,
+      memoryCostPerGBPerHour: 0.006,
+    },
+    ...overrides,
+  };
+}
 
-  it('calculates hourly cost correctly', () => {
-    const result = calc.calculate('component:default/my-app', 'my-ns', 'my-app', {
-      cpuCores: 2,
-      memGiB: 4,
-      cpuRequestCores: 2,
-      memRequestGiB: 4,
-      replicaCount: 2,
-    });
+describe('CostCalculator', () => {
+  it('charges on max(usage, requests) in max mode — picks requests when higher', () => {
+    const calc = new CostCalculator(makeConfig({ chargeMode: 'max' }));
+    const result = calc.calculate('component:default/app', 'ns', 'app', baseMetrics);
+
+    // cpuRequest(1) > cpuUsage(0.5) → bill 1 core
+    expect(result.cpuCostPerHour).toBeCloseTo(1 * 0.048);
+    // memRequest(4) > memUsage(2) → bill 4 GiB
+    expect(result.memoryCostPerHour).toBeCloseTo(4 * 0.006);
+    expect(result.hourlyCost).toBeCloseTo(1 * 0.048 + 4 * 0.006);
+    expect(result.chargeMode).toBe('max');
+  });
+
+  it('charges on actual usage in usage mode', () => {
+    const calc = new CostCalculator(makeConfig({ chargeMode: 'usage' }));
+    const result = calc.calculate('component:default/app', 'ns', 'app', baseMetrics);
+
+    expect(result.cpuCostPerHour).toBeCloseTo(0.5 * 0.048);
+    expect(result.memoryCostPerHour).toBeCloseTo(2 * 0.006);
+  });
+
+  it('charges on requests in requests mode', () => {
+    const calc = new CostCalculator(makeConfig({ chargeMode: 'requests' }));
+    const result = calc.calculate('component:default/app', 'ns', 'app', baseMetrics);
+
+    expect(result.cpuCostPerHour).toBeCloseTo(1 * 0.048);
+    expect(result.memoryCostPerHour).toBeCloseTo(4 * 0.006);
+  });
+
+  it('charges on limits in limits mode', () => {
+    const calc = new CostCalculator(makeConfig({ chargeMode: 'limits' }));
+    const result = calc.calculate('component:default/app', 'ns', 'app', baseMetrics);
 
     expect(result.cpuCostPerHour).toBeCloseTo(2 * 0.048);
-    expect(result.memoryCostPerHour).toBeCloseTo(4 * 0.006);
-    expect(result.hourlyCost).toBeCloseTo(2 * 0.048 + 4 * 0.006);
+    expect(result.memoryCostPerHour).toBeCloseTo(8 * 0.006);
+  });
+
+  it('charges max(usage, requests) and picks usage when it is higher', () => {
+    const calc = new CostCalculator(makeConfig({ chargeMode: 'max' }));
+    const result = calc.calculate('component:default/app', 'ns', 'app', {
+      ...baseMetrics,
+      cpuCores: 1.5,   // usage > request
+      cpuRequestCores: 1,
+    });
+
+    expect(result.cpuCostPerHour).toBeCloseTo(1.5 * 0.048);
   });
 
   it('handles zero metrics', () => {
+    const calc = new CostCalculator(makeConfig());
     const result = calc.calculate('component:default/idle', 'ns', 'idle', {
       cpuCores: 0,
       memGiB: 0,
       cpuRequestCores: 0,
       memRequestGiB: 0,
+      cpuLimitCores: 0,
+      memLimitGiB: 0,
       replicaCount: 0,
     });
 
@@ -43,29 +91,25 @@ describe('CostCalculator', () => {
   });
 
   it('uses custom cost model rates', () => {
-    const expensiveConfig: MeteringConfig = {
-      ...baseConfig,
-      costModel: { cpuCostPerCorePerHour: 1.0, memoryCostPerGBPerHour: 0.1 },
-    };
-    const expensiveCalc = new CostCalculator(expensiveConfig);
-
-    const result = expensiveCalc.calculate('component:default/app', 'ns', 'app', {
+    const calc = new CostCalculator(
+      makeConfig({ chargeMode: 'usage', costModel: { cpuCostPerCorePerHour: 1.0, memoryCostPerGBPerHour: 0.1 } }),
+    );
+    const result = calc.calculate('component:default/app', 'ns', 'app', {
+      ...baseMetrics,
       cpuCores: 10,
       memGiB: 100,
-      cpuRequestCores: 10,
-      memRequestGiB: 100,
-      replicaCount: 5,
     });
 
     expect(result.hourlyCost).toBeCloseTo(10 * 1.0 + 100 * 0.1);
   });
 
-  it('correctly propagates entity metadata', () => {
+  it('correctly propagates entity metadata and new fields', () => {
+    const calc = new CostCalculator(makeConfig());
     const result = calc.calculate(
       'component:production/web-server',
       'production',
       'web-server',
-      { cpuCores: 1, memGiB: 2, cpuRequestCores: 1, memRequestGiB: 2, replicaCount: 1 },
+      baseMetrics,
     );
 
     expect(result.entityRef).toBe('component:production/web-server');
@@ -73,15 +117,16 @@ describe('CostCalculator', () => {
     expect(result.deployment).toBe('web-server');
     expect(result.windowHours).toBe(24);
     expect(result.sampledAt).toBeTruthy();
+    expect(result.cpuLimitCores).toBe(baseMetrics.cpuLimitCores);
+    expect(result.memLimitGiB).toBe(baseMetrics.memLimitGiB);
   });
 
   it('projects daily and monthly costs correctly', () => {
+    const calc = new CostCalculator(makeConfig({ chargeMode: 'usage' }));
     const result = calc.calculate('component:default/app', 'ns', 'app', {
+      ...baseMetrics,
       cpuCores: 1,
       memGiB: 1,
-      cpuRequestCores: 1,
-      memRequestGiB: 1,
-      replicaCount: 1,
     });
 
     const daily = result.hourlyCost * 24;

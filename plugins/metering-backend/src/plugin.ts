@@ -34,6 +34,7 @@ const meteringPlugin = createBackendPlugin({
         const parseResult = meteringConfigSchema.safeParse({
           prometheusUrl: rawConfig.getString('prometheusUrl'),
           bearerToken: rawConfig.getOptionalString('bearerToken'),
+          chargeMode: rawConfig.getOptionalString('chargeMode') ?? 'max',
           windowHours: rawConfig.getOptionalNumber('windowHours') ?? 24,
           retentionDays: rawConfig.getOptionalNumber('retentionDays') ?? 90,
           costModel: {

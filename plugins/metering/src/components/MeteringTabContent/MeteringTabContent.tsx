@@ -82,7 +82,7 @@ export function MeteringTabContent() {
                   icon={<AttachMoneyIcon fontSize="small" color="action" />}
                   label="Hourly Cost"
                   value={formatUsd(cost.hourlyCost)}
-                  sub={`avg over ${windowHours}h`}
+                  sub={`avg over ${windowHours}h · billed on ${cost.chargeMode}`}
                 />
               </Grid>
               <Grid item xs={6} sm={3}>

@@ -16,6 +16,12 @@
           "visibility": "secret",
           "description": "Optional bearer token used to authenticate to Prometheus. Takes precedence over the in-cluster service account token; mainly useful for local development against a port-forwarded OpenShift Prometheus, which is not reachable from outside the cluster with the pod's own SA token."
         },
+        "chargeMode": {
+          "type": "string",
+          "enum": ["usage", "requests", "limits", "max"],
+          "default": "max",
+          "description": "Which resource signal to bill against. 'usage' = actual consumption, 'requests' = scheduler reservations, 'limits' = hard caps, 'max' = higher of usage vs requests (default). 'max' is recommended as it discourages over-requesting."
+        },
         "windowHours": {
           "type": "number",
           "description": "Lookback window in hours for live cost queries (default: 24)",

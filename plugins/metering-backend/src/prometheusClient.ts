@@ -8,6 +8,8 @@ export interface PrometheusMetrics {
   memGiB: number;
   cpuRequestCores: number;
   memRequestGiB: number;
+  cpuLimitCores: number;
+  memLimitGiB: number;
   replicaCount: number;
 }
 
@@ -91,7 +93,7 @@ export class PrometheusClient {
 
     const podSel = `namespace="${namespace}",pod=~"${deployment}-[a-z0-9]+-[a-z0-9]+"`;
 
-    const [cpuCores, memBytes, cpuRequestCores, memRequestBytes, replicaCount] =
+    const [cpuCores, memBytes, cpuRequestCores, memRequestBytes, cpuLimitCores, memLimitBytes, replicaCount] =
       await Promise.all([
         this.query(
           `sum(rate(container_cpu_usage_seconds_total{${sel}}[${window}]))`,
@@ -104,6 +106,12 @@ export class PrometheusClient {
           `sum(kube_pod_container_resource_requests{${podSel},resource="memory"})`,
         ),
         this.query(
+          `sum(kube_pod_container_resource_limits{${podSel},resource="cpu"})`,
+        ),
+        this.query(
+          `sum(kube_pod_container_resource_limits{${podSel},resource="memory"})`,
+        ),
+        this.query(
           `kube_deployment_status_replicas{namespace="${namespace}",deployment="${deployment}"}`,
         ),
       ]);
@@ -113,6 +121,8 @@ export class PrometheusClient {
       memGiB: memBytes / 1024 ** 3,
       cpuRequestCores,
       memRequestGiB: memRequestBytes / 1024 ** 3,
+      cpuLimitCores,
+      memLimitGiB: memLimitBytes / 1024 ** 3,
       replicaCount: Math.round(replicaCount),
     };
   }

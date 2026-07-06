@@ -5,10 +5,13 @@ import {
   fetchApiRef,
 } from '@backstage/core-plugin-api';
 
+export type ChargeMode = 'usage' | 'requests' | 'limits' | 'max';
+
 export interface CostResult {
   entityRef: string;
   namespace: string;
   deployment: string;
+  chargeMode: ChargeMode;
   cpuCores: number;
   memGiB: number;
   cpuCostPerHour: number;
@@ -16,6 +19,8 @@ export interface CostResult {
   hourlyCost: number;
   cpuRequestCores: number;
   memRequestGiB: number;
+  cpuLimitCores: number;
+  memLimitGiB: number;
   replicaCount: number;
   windowHours: number;
   sampledAt: string;

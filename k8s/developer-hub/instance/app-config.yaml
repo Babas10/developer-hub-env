@@ -70,6 +70,10 @@ data:
 
     metering:
       prometheusUrl: https://prometheus-k8s.openshift-monitoring.svc:9091
+      # chargeMode controls which resource signal is billed.
+      # Options: usage | requests | limits | max (default: max)
+      # max = higher of actual usage vs requests, discourages over-requesting.
+      chargeMode: max
       windowHours: 24
       retentionDays: 90
       costModel:

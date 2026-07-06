@@ -1,5 +1,24 @@
-import { MeteringConfig, CostResult } from './types';
+import { MeteringConfig, CostResult, ChargeMode } from './types';
 import { PrometheusMetrics } from './prometheusClient';
+
+function resolveBillableValue(
+  usage: number,
+  request: number,
+  limit: number,
+  mode: ChargeMode,
+): number {
+  switch (mode) {
+    case 'requests':
+      return request;
+    case 'limits':
+      return limit;
+    case 'max':
+      return Math.max(usage, request);
+    case 'usage':
+    default:
+      return usage;
+  }
+}
 
 export class CostCalculator {
   private readonly config: MeteringConfig;
@@ -16,14 +35,29 @@ export class CostCalculator {
   ): CostResult {
     const { cpuCostPerCorePerHour, memoryCostPerGBPerHour } =
       this.config.costModel;
+    const mode = this.config.chargeMode;
 
-    const cpuCostPerHour = metrics.cpuCores * cpuCostPerCorePerHour;
-    const memoryCostPerHour = metrics.memGiB * memoryCostPerGBPerHour;
+    const billableCpu = resolveBillableValue(
+      metrics.cpuCores,
+      metrics.cpuRequestCores,
+      metrics.cpuLimitCores,
+      mode,
+    );
+    const billableMem = resolveBillableValue(
+      metrics.memGiB,
+      metrics.memRequestGiB,
+      metrics.memLimitGiB,
+      mode,
+    );
+
+    const cpuCostPerHour = billableCpu * cpuCostPerCorePerHour;
+    const memoryCostPerHour = billableMem * memoryCostPerGBPerHour;
 
     return {
       entityRef,
       namespace,
       deployment,
+      chargeMode: mode,
       cpuCores: metrics.cpuCores,
       memGiB: metrics.memGiB,
       cpuCostPerHour,
@@ -31,6 +65,8 @@ export class CostCalculator {
       hourlyCost: cpuCostPerHour + memoryCostPerHour,
       cpuRequestCores: metrics.cpuRequestCores,
       memRequestGiB: metrics.memRequestGiB,
+      cpuLimitCores: metrics.cpuLimitCores,
+      memLimitGiB: metrics.memLimitGiB,
       replicaCount: metrics.replicaCount,
       windowHours: this.config.windowHours,
       sampledAt: new Date().toISOString(),
