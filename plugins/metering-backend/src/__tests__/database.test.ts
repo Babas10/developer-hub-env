@@ -36,12 +36,18 @@ async function insertAt(db: Knex, entityRef: string, daysAgo: number, hourlyCost
 }
 
 /** Insert a snapshot at an explicit ISO timestamp string. */
-async function insertAtIso(db: Knex, entityRef: string, isoTs: string, hourlyCost = 1): Promise<void> {
+async function insertAtIso(
+  db: Knex,
+  entityRef: string,
+  isoTs: string,
+  hourlyCost = 1,
+  cpuCores = 0.5,
+): Promise<void> {
   await db('cost_snapshots').insert({
     entity_ref: entityRef,
     namespace: 'ns',
     deployment: 'app',
-    cpu_cores: 0.5,
+    cpu_cores: cpuCores,
     mem_gib: 1,
     hourly_cost: hourlyCost,
     gpu_count: 0,
@@ -204,23 +210,37 @@ describe('runMonthlyRollup', () => {
     await db.destroy();
   });
 
-  it('is idempotent — running twice does not double-count', async () => {
+  it('accumulates partial nightly slices into the same monthly row correctly', async () => {
+    // This test specifically exercises the incremental (additive) upsert.
+    // Night 1: roll up day-1 row (hourlyCost=10, cpu=0.5).
+    // Night 2: day-2 row (hourlyCost=20, cpu=1.0) ages past the cutoff and is rolled up.
+    // Expected final state: one rollup row with total_cost=30, sample_count=2,
+    //   avg_cpu_cores=0.75 (weighted avg: (0.5*1 + 1.0*1) / 2).
+    // A plain .merge() overwrite would produce total_cost=20, sample_count=1 — this
+    // test catches that regression.
     const db = await createTestDb();
-    await insertAtIso(db, 'component:default/app', twoMonthsAgoIso(1), 10);
 
+    // Row A: cpu=0.5, hourlyCost=10
+    await insertAtIso(db, 'component:default/app', twoMonthsAgoIso(1), 10, 0.5);
     await runMonthlyRollup(db, 30);
+    // Stored after night 1: avg_cpu_cores=0.5, total_cost=10, sample_count=1
 
-    // Insert a second old row for the same month and re-run (simulates partial data arriving late)
-    await insertAtIso(db, 'component:default/app', twoMonthsAgoIso(2), 20);
-
+    // Simulate a second slice for the same month arriving on a later nightly run
+    // Row B: cpu=1.0, hourlyCost=20
+    await insertAtIso(db, 'component:default/app', twoMonthsAgoIso(2), 20, 1.0);
     await runMonthlyRollup(db, 30);
+    // Expected after night 2 (additive): total_cost=30, sample_count=2,
+    //   avg_cpu_cores = (0.5*1 + 1.0*1) / (1+1) = 0.75
+    // A plain .merge() overwrite would produce total_cost=20, sample_count=1 — regression.
 
     const rollups = await db('cost_monthly_rollups')
       .where('entity_ref', 'component:default/app')
       .select('*');
 
-    // Should still be exactly one row per (entity_ref, month_start)
     expect(rollups).toHaveLength(1);
+    expect(Number(rollups[0].sample_count)).toBe(2);
+    expect(Number(rollups[0].total_cost)).toBeCloseTo(30);
+    expect(Number(rollups[0].avg_cpu_cores)).toBeCloseTo(0.75); // weighted avg
     await db.destroy();
   });
 

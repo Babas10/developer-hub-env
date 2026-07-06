@@ -10,15 +10,21 @@ export const costModelSchema = z.object({
   gpuCostPerGpuPerHour: z.number().nonnegative().default(0),
 });
 
-export const meteringConfigSchema = z.object({
-  prometheusUrl: z.string().url(),
-  bearerToken: z.string().optional(),
-  chargeMode: chargeModeSchema,
-  windowHours: z.number().positive().default(24),
-  retentionDays: z.number().positive().default(90),
-  rollupAfterDays: z.number().positive().default(30),
-  costModel: costModelSchema,
-});
+export const meteringConfigSchema = z
+  .object({
+    prometheusUrl: z.string().url(),
+    bearerToken: z.string().optional(),
+    chargeMode: chargeModeSchema,
+    windowHours: z.number().positive().default(24),
+    retentionDays: z.number().positive().default(90),
+    rollupAfterDays: z.number().positive().default(30),
+    costModel: costModelSchema,
+  })
+  .refine(data => data.rollupAfterDays < data.retentionDays, {
+    message:
+      'rollupAfterDays must be less than retentionDays — otherwise pruneOldSnapshots will hard-delete hourly rows before they reach the rollup cutoff, causing silent data loss with no monthly aggregate fallback',
+    path: ['rollupAfterDays'],
+  });
 
 export type MeteringConfig = z.infer<typeof meteringConfigSchema>;
 

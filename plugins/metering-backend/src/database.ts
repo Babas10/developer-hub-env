@@ -166,9 +166,15 @@ export async function pruneOldSnapshots(
  * ADR-05 nightly rollup: aggregates hourly snapshot rows that are older than
  * rollupAfterDays into the cost_monthly_rollups table, then deletes the source rows.
  *
- * The upsert uses ON CONFLICT (entity_ref, month_start) so re-running the job
- * for the same month is idempotent — it overwrites the previous aggregate with
- * the correct values rather than double-counting.
+ * The upsert is ADDITIVE: when a row already exists for (entity_ref, month_start),
+ * total_cost and sample_count are summed and the running averages are recomputed as
+ * weighted averages so that each nightly run correctly accumulates the new slice of
+ * hourly rows rather than overwriting the stored aggregate.
+ *
+ * This design is safe for the normal usage pattern where the cutoff is a moving
+ * window (now − rollupAfterDays): new hourly rows age past it each night, get
+ * aggregated into the monthly row, and are then deleted — each night's slice is
+ * non-overlapping with previous runs for the same month.
  *
  * Returns the number of hourly rows that were deleted after being rolled up.
  * Returns 0 if there is nothing old enough to roll up yet.
@@ -212,7 +218,9 @@ export async function runMonthlyRollup(
 
   if (groups.length === 0) return 0;
 
-  // Upsert each monthly group — idempotent on (entity_ref, month_start)
+  // Upsert each monthly group with an ADDITIVE merge on conflict.
+  // Both SQLite and PostgreSQL support the `excluded` pseudo-table in DO UPDATE.
+  // Means are recomputed as weighted averages so accumulated slices combine correctly.
   await knex('cost_monthly_rollups')
     .insert(
       groups.map(g => ({
@@ -228,7 +236,29 @@ export async function runMonthlyRollup(
       })),
     )
     .onConflict(['entity_ref', 'month_start'])
-    .merge();
+    .merge({
+      total_cost: knex.raw(
+        'cost_monthly_rollups.total_cost + excluded.total_cost',
+      ),
+      sample_count: knex.raw(
+        'cost_monthly_rollups.sample_count + excluded.sample_count',
+      ),
+      avg_cpu_cores: knex.raw(
+        '(cost_monthly_rollups.avg_cpu_cores * cost_monthly_rollups.sample_count' +
+          ' + excluded.avg_cpu_cores * excluded.sample_count)' +
+          ' / (cost_monthly_rollups.sample_count + excluded.sample_count)',
+      ),
+      avg_mem_gib: knex.raw(
+        '(cost_monthly_rollups.avg_mem_gib * cost_monthly_rollups.sample_count' +
+          ' + excluded.avg_mem_gib * excluded.sample_count)' +
+          ' / (cost_monthly_rollups.sample_count + excluded.sample_count)',
+      ),
+      avg_gpu_count: knex.raw(
+        '(cost_monthly_rollups.avg_gpu_count * cost_monthly_rollups.sample_count' +
+          ' + excluded.avg_gpu_count * excluded.sample_count)' +
+          ' / (cost_monthly_rollups.sample_count + excluded.sample_count)',
+      ),
+    });
 
   // Delete the rolled-up hourly rows
   const deleted = await knex('cost_snapshots')
