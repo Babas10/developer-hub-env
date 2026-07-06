@@ -1,6 +1,8 @@
-import path from 'path';
 import { Knex } from 'knex';
 import { CostSnapshot } from './types';
+import * as migration001 from './migrations/001_initial_cost_snapshots';
+import * as migration002 from './migrations/002_add_gpu_columns';
+import * as migration003 from './migrations/003_create_cost_monthly_rollups';
 
 /** Returns true when running against SQLite (local dev / tests). */
 function isSQLite(knex: Knex): boolean {
@@ -18,24 +20,35 @@ function monthTruncExpr(knex: Knex, column: string): string {
     : `date_trunc('month', ${column})::date`;
 }
 
+// Ordered list of all migrations. Static imports ensure the build tool
+// includes every migration file in the compiled output — the previous
+// path.resolve(__dirname, 'migrations') directory scan only worked in
+// local TypeScript dev because the compiled dist/ never contained a
+// migrations/ subdirectory.
+const MIGRATIONS = [
+  { name: '001_initial_cost_snapshots', module: migration001 },
+  { name: '002_add_gpu_columns',        module: migration002 },
+  { name: '003_create_cost_monthly_rollups', module: migration003 },
+] as const;
+
+const migrationSource = {
+  getMigrations: () => Promise.resolve([...MIGRATIONS]),
+  getMigrationName: (m: (typeof MIGRATIONS)[number]) => m.name,
+  getMigration:     (m: (typeof MIGRATIONS)[number]) => Promise.resolve(m.module),
+};
+
 /**
- * Run all pending Knex migrations from the migrations/ directory.
+ * Run all pending Knex migrations.
  *
- * Knex tracks applied migrations in a `knex_migrations` table it manages
- * automatically — this call is idempotent and safe to re-run on every
- * plugin startup.
+ * Migrations are registered via static imports so the build tool bundles
+ * them into the compiled output. Knex tracks applied migrations in its own
+ * knex_migrations table — this call is idempotent and safe on every startup.
  *
- * To add a new migration: create migrations/NNN_<description>.ts with an
- * `up` function (and optionally a `down` function for rollbacks).
+ * To add a new migration: create migrations/NNN_<description>.ts, add it to
+ * the MIGRATIONS array above, and bump the import at the top of this file.
  */
 export async function runMigrations(knex: Knex): Promise<void> {
-  const migrationsDir = path.resolve(__dirname, 'migrations');
-  await knex.migrate.latest({
-    directory: migrationsDir,
-    // Knex needs a require hook for .ts files during local dev; in the compiled
-    // plugin the migrations are already .js files in the same relative path.
-    loadExtensions: ['.js', '.ts'],
-  });
+  await knex.migrate.latest({ migrationSource });
 }
 
 export async function insertSnapshot(
