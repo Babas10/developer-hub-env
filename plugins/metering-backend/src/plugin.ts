@@ -37,6 +37,7 @@ const meteringPlugin = createBackendPlugin({
           chargeMode: rawConfig.getOptionalString('chargeMode') ?? 'max',
           windowHours: rawConfig.getOptionalNumber('windowHours') ?? 24,
           retentionDays: rawConfig.getOptionalNumber('retentionDays') ?? 90,
+          rollupAfterDays: rawConfig.getOptionalNumber('rollupAfterDays') ?? 30,
           costModel: {
             cpuCostPerCorePerHour: rawConfig
               .getConfig('costModel')

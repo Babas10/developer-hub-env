@@ -11,7 +11,7 @@ import { Knex } from 'knex';
 import { PrometheusClient } from './prometheusClient';
 import { CostCalculator } from './costCalculator';
 import { MeteringConfig } from './types';
-import { insertSnapshot, pruneOldSnapshots } from './database';
+import { insertSnapshot, pruneOldSnapshots, runMonthlyRollup } from './database';
 
 const ANNOTATION_KUBERNETES_NAMESPACE = 'backstage.io/kubernetes-namespace';
 const ANNOTATION_KUBERNETES_ID = 'backstage.io/kubernetes-id';
@@ -35,6 +35,27 @@ export function createSnapshotScheduler(
   const snapshotCache = new LRUCache<string, boolean>({
     max: 1000,
     ttl: 50 * 60 * 1000,
+  });
+
+  // Nightly rollup: promotes hourly rows older than rollupAfterDays into
+  // cost_monthly_rollups and deletes the source rows (ADR-05).
+  scheduler.scheduleTask({
+    id: 'metering-monthly-rollup',
+    frequency: { hours: 24 },
+    timeout: { minutes: 15 },
+    initialDelay: { minutes: 5 },
+    fn: async () => {
+      logger.info('Metering: running nightly monthly rollup');
+      const knex = (await database.getClient()) as unknown as Knex;
+      const rolled = await runMonthlyRollup(knex, config.rollupAfterDays);
+      if (rolled > 0) {
+        logger.info(
+          `Metering: rolled up ${rolled} hourly snapshots into monthly aggregates`,
+        );
+      } else {
+        logger.debug('Metering: no hourly snapshots old enough to roll up');
+      }
+    },
   });
 
   scheduler.scheduleTask({

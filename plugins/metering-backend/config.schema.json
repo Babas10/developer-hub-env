@@ -32,6 +32,11 @@
           "description": "Number of days to retain cost snapshots in the database (default: 90)",
           "default": 90
         },
+        "rollupAfterDays": {
+          "type": "number",
+          "description": "Hourly snapshot rows older than this many days are aggregated into monthly rollups and removed from the snapshots table (ADR-05). Default: 30. MUST be less than retentionDays — if rollupAfterDays >= retentionDays, pruneOldSnapshots will hard-delete hourly rows before they reach the rollup cutoff, causing silent data loss. Set to 0 to roll up all existing snapshots immediately on the next scheduler cycle (useful for local testing).",
+          "default": 30
+        },
         "costModel": {
           "type": "object",
           "required": ["cpuCostPerCorePerHour", "memoryCostPerGBPerHour"],
