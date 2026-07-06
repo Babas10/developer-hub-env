@@ -10,6 +10,8 @@ import AttachMoneyIcon from '@material-ui/icons/AttachMoney';
 import TodayIcon from '@material-ui/icons/Today';
 import DateRangeIcon from '@material-ui/icons/DateRange';
 import LayersIcon from '@material-ui/icons/Layers';
+import DeveloperBoardIcon from '@material-ui/icons/DeveloperBoard';
+import MemoryIcon from '@material-ui/icons/Memory';
 import { InfoCard, Progress, ResponseErrorPanel } from '@backstage/core-components';
 import { useMeteringData } from '../common/useMeteringData';
 import { MeteringAnnotationGuard } from '../common/MeteringAnnotationGuard';
@@ -124,6 +126,37 @@ export function MeteringTabContent() {
                 total={cost.memRequestGiB}
                 unit="GiB"
               />
+            </InfoCard>
+          </Grid>
+
+          <Grid item>
+            <InfoCard title="Cost Breakdown">
+              <Grid container spacing={2}>
+                <Grid item xs={12} sm={4}>
+                  <KpiTile
+                    icon={<DeveloperBoardIcon fontSize="small" color="action" />}
+                    label="CPU $/hr"
+                    value={formatUsd(cost.cpuCostPerHour)}
+                    sub={`${((cost.cpuCostPerHour / (cost.hourlyCost || 1)) * 100).toFixed(0)}% of total`}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={4}>
+                  <KpiTile
+                    icon={<MemoryIcon fontSize="small" color="action" />}
+                    label="Memory $/hr"
+                    value={formatUsd(cost.memoryCostPerHour)}
+                    sub={`${((cost.memoryCostPerHour / (cost.hourlyCost || 1)) * 100).toFixed(0)}% of total`}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={4}>
+                  <KpiTile
+                    icon={<AttachMoneyIcon fontSize="small" color="action" />}
+                    label="GPU $/hr"
+                    value={formatUsd(0)}
+                    sub="GPU not configured"
+                  />
+                </Grid>
+              </Grid>
             </InfoCard>
           </Grid>
         </>

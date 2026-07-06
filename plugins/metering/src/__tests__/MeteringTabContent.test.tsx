@@ -101,6 +101,17 @@ describe('MeteringTabContent', () => {
     expect(screen.getByText('Monthly Average')).toBeTruthy();
   });
 
+  it('renders cost breakdown card with CPU, Memory and GPU tiles', async () => {
+    await renderTab(mockEntity);
+
+    await waitFor(() => {
+      expect(screen.getByText('Cost Breakdown')).toBeTruthy();
+    });
+    expect(screen.getByText('CPU $/hr')).toBeTruthy();
+    expect(screen.getByText('Memory $/hr')).toBeTruthy();
+    expect(screen.getByText('GPU $/hr')).toBeTruthy();
+  });
+
   it('displays error message when API fails', async () => {
     const failingApi = buildApi({
       getCost: jest.fn().mockRejectedValue(new Error('Prometheus unreachable')),
