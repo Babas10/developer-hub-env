@@ -8,7 +8,7 @@ metadata:
   name: rhdh-cluster-monitoring-view
 subjects:
   - kind: ServiceAccount
-    name: developer-hub-developer-hub
+    name: default
     namespace: developer-hub
 roleRef:
   kind: ClusterRole
