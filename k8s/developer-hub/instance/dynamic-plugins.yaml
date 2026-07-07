@@ -60,10 +60,10 @@ data:
       # OCI images built with plugins/build-oci.sh and pushed to quay.io/edubois10.
       # Repositories must be set to PUBLIC on quay.io so RHDH can pull without
       # cluster-level image pull secrets.
-      - package: oci://quay.io/edubois10/rhdh-plugin-metering-backend:0.1.0
+      - package: oci://quay.io/edubois10/rhdh-plugin-metering-backend:0.1.0!internal-backstage-plugin-metering-backend
         disabled: false
 
-      - package: oci://quay.io/edubois10/rhdh-plugin-metering:0.1.0
+      - package: oci://quay.io/edubois10/rhdh-plugin-metering:0.1.0!internal-backstage-plugin-metering
         disabled: false
         pluginConfig:
           dynamicPlugins:

@@ -1,9 +1,0 @@
-# Packages the metering frontend dynamic plugin as an OCI image.
-#
-# Build from the dist-dynamic/ directory (the CLI export output):
-#   podman build -f Dockerfile.oci -t quay.io/<org>/rhdh-plugin-metering:<version> dist-dynamic/
-#
-# RHDH's install-dynamic-plugins init container extracts /opt/app-root/src/
-# from this image and places the content in dynamic-plugins-root.
-FROM scratch
-COPY . /opt/app-root/src/

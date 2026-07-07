@@ -707,10 +707,10 @@ Two things control how a dynamic plugin is loaded:
   for frontend plugins, *where in the UI* to mount their exported components:
 
   ```68:89:k8s/developer-hub/instance/dynamic-plugins.yaml
-        - package: oci://quay.io/<your-org>/rhdh-plugin-metering-backend:1.0.0
+        - package: oci://quay.io/<your-org>/rhdh-plugin-metering-backend:1.0.0!internal-backstage-plugin-metering-backend
           disabled: false
 
-        - package: oci://quay.io/<your-org>/rhdh-plugin-metering:1.0.0
+        - package: oci://quay.io/<your-org>/rhdh-plugin-metering:1.0.0!internal-backstage-plugin-metering
           disabled: false
           pluginConfig:
             dynamicPlugins:
