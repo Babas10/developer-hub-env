@@ -647,25 +647,28 @@ Key differences:
 
 ### 6.2 What the OCI image contains
 
-Running `plugin export` produces a `dist-dynamic/` directory — a
-self-contained Node.js package with all private dependencies bundled in.
-The OCI image is a thin container that just holds this directory at a
-well-known path:
+The OCI image is a **data-only artifact** built `FROM scratch` — it has no
+OS, no runtime, no shell. It exists purely as a transport mechanism for the
+compiled plugin files:
 
 ```
-OCI image filesystem
-└── opt/app-root/src/
-    └── <plugin-name>-<version>/   ← what install-dynamic-plugins extracts
-        ├── package.json
-        └── dist/
-            ├── index.cjs.js
-            ├── database.cjs.js
-            └── ...
+OCI image filesystem (FROM scratch)
+├── package.json              ← plugin manifest
+├── dist/                     ← compiled backend (or dist-scalprum/ for frontend)
+│   ├── index.cjs.js
+│   ├── database.cjs.js
+│   └── ...
+└── node_modules/             ← private deps bundled at export time
 ```
 
-The init container script knows this layout. It pulls the image, copies
-the directory out, and drops it into the `dynamic-plugins-root` volume.
-RHDH scans that volume at startup and loads whatever it finds there.
+The image also carries an OCI annotation (`io.backstage.dynamic-packages`)
+that encodes a JSON manifest of the plugins inside the image. The
+`install-dynamic-plugins` init container reads this annotation to know
+what it's installing without having to inspect the filesystem first.
+
+The init container extracts the image contents into the
+`dynamic-plugins-root` volume. RHDH scans that volume at startup and loads
+whatever plugins it finds there.
 
 ### 6.3 How ArgoCD fits in
 
@@ -737,6 +740,116 @@ MeteringSummaryCard` matches the named export from `plugin.ts` — these
 string values are the contract between your plugin code and the host
 config, and there's no compiler to catch a typo in either, so
 double-check them if a mounted card doesn't show up.
+
+### 6.5 Packaging and pushing OCI images with the RHDH CLI
+
+Red Hat provides an official CLI command that handles the entire packaging
+pipeline in one step — no Containerfile needed:
+
+```
+plugin export        ← compile + bundle into dist-dynamic/
+     │
+     ▼
+plugin package       ← build FROM scratch OCI image + add annotations
+     │
+     ▼
+podman push          ← publish to registry
+     │
+     ▼
+dynamic-plugins.yaml ← reference the OCI image by tag + plugin name
+     │
+     ▼
+ArgoCD sync          ← applies ConfigMap to cluster
+     │
+     ▼
+install-dynamic-plugins init container ← pulls image, extracts plugin
+```
+
+#### Step 1 — Export
+
+`plugin export` compiles the TypeScript source and bundles all private
+dependencies into `dist-dynamic/`. Run it from the plugin's package
+directory:
+
+```bash
+cd plugins/metering-backend
+npx @red-hat-developer-hub/cli@1.10 plugin export --clean
+```
+
+For a production build this compiles all files — including migration files
+referenced via static imports — into the `dist/` directory inside
+`dist-dynamic/`. The `--clean` flag removes any previous export first.
+
+#### Step 2 — Package as OCI image
+
+`plugin package` reads `dist-dynamic/`, stages the content, and runs:
+
+```
+FROM scratch
+COPY . .
+```
+
+It also adds an `io.backstage.dynamic-packages` OCI annotation that encodes
+a JSON manifest of the plugins inside the image. The `install-dynamic-plugins`
+init container uses this annotation to identify plugins without scanning the
+filesystem.
+
+```bash
+export QUAY_USER=edubois10
+export PLUGIN=metering-backend
+export VERSION=$(cat package.json | python3 -c "import sys,json; print(json.load(sys.stdin)['version'])")
+
+npx @red-hat-developer-hub/cli@1.10 plugin package \
+  --force-export \
+  --tag quay.io/${QUAY_USER}/rhdh-plugin-${PLUGIN}:${VERSION}
+```
+
+`--force-export` re-runs the export even if `dist-dynamic/` already exists,
+ensuring a clean build. Without it, `plugin package` reuses an existing
+`dist-dynamic/` if present.
+
+The command prints the exact `dynamic-plugins.yaml` snippet to use, including
+the `!plugin-name` suffix:
+
+```
+plugins:
+  - package: oci://quay.io/edubois10/rhdh-plugin-metering-backend:0.1.0!internal-backstage-plugin-metering-backend
+    disabled: false
+```
+
+The `!plugin-name` suffix identifies which plugin to extract when an OCI
+image bundles multiple plugins. Always use the value the CLI prints — do
+not guess it.
+
+#### Step 3 — Push
+
+```bash
+podman push quay.io/${QUAY_USER}/rhdh-plugin-${PLUGIN}:${VERSION}
+```
+
+#### Step 4 — Make the repository public
+
+The RHDH cluster pulls plugin images without any image pull secret by
+default. The quay.io repository **must be set to Public** (Settings →
+Repository Visibility) before the cluster can pull.
+
+#### Step 5 — Update `dynamic-plugins.yaml` and push to git
+
+Update `k8s/developer-hub/instance/dynamic-plugins.yaml` with the OCI ref
+from step 2 and set `disabled: false`. Commit and push — ArgoCD picks up
+the change automatically on the next sync cycle.
+
+#### Automated script
+
+All five steps for both plugins are automated in
+[`plugins/build-oci.sh`](./build-oci.sh):
+
+```bash
+cd ~/PersonalProject/developer-hub-env/plugins
+./build-oci.sh                            # uses defaults (quay.io/edubois10, version from package.json)
+./build-oci.sh --registry quay.io/myorg  # custom registry
+./build-oci.sh --tag 1.2.0               # custom tag
+```
 
 ## 7. Local development loop (`rhdh-local`)
 
