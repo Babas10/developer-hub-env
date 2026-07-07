@@ -321,21 +321,43 @@ migrations/
   003_create_cost_monthly_rollups.ts  ← ADR-05 two-tier storage table
 ```
 
-Each file exports `up(knex)` (and optionally `down(knex)`). The runner in
-`database.ts` applies all pending migrations at plugin startup:
+Each file exports `up(knex)` (and optionally `down(knex)`).
+
+**Critical: use static imports, not directory scan.** The Backstage CLI build
+only compiles files reachable via static imports. A `path.resolve(__dirname,
+'migrations')` directory scan works in local TypeScript dev (where `src/` is
+live on disk) but fails in the compiled `dist-dynamic/` bundle because
+`dist/migrations/` is never created — RHDH crashes on startup with `ENOENT:
+no such file or directory, scandir ...dist/migrations`.
+
+The correct pattern uses Knex's `migrationSource` API with explicit imports so
+the build tool bundles every migration into the compiled output:
 
 ```typescript
+import * as migration001 from './migrations/001_initial_cost_snapshots';
+import * as migration002 from './migrations/002_add_gpu_columns';
+import * as migration003 from './migrations/003_create_cost_monthly_rollups';
+
+const MIGRATIONS = [
+  { name: '001_initial_cost_snapshots',      module: migration001 },
+  { name: '002_add_gpu_columns',             module: migration002 },
+  { name: '003_create_cost_monthly_rollups', module: migration003 },
+] as const;
+
+const migrationSource = {
+  getMigrations: () => Promise.resolve([...MIGRATIONS]),
+  getMigrationName: (m: (typeof MIGRATIONS)[number]) => m.name,
+  getMigration:     (m: (typeof MIGRATIONS)[number]) => Promise.resolve(m.module),
+};
+
 export async function runMigrations(knex: Knex): Promise<void> {
-  const migrationsDir = path.resolve(__dirname, 'migrations');
-  await knex.migrate.latest({
-    directory: migrationsDir,
-    loadExtensions: ['.js', '.ts'],   // .ts for local dev, .js for built plugin
-  });
+  await knex.migrate.latest({ migrationSource });
 }
 ```
 
-Knex tracks which migrations have run in a `knex_migrations` table it
-manages itself — the call is idempotent and safe to call on every startup.
+To add a new migration: create the file, add it to the imports and the
+`MIGRATIONS` array. Knex tracks applied migrations in a `knex_migrations`
+table — the call is idempotent and safe on every startup.
 
 ### Two-tier storage (ADR-05)
 
