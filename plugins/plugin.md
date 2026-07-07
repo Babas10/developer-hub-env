@@ -851,6 +851,120 @@ cd ~/PersonalProject/developer-hub-env/plugins
 ./build-oci.sh --tag 1.2.0               # custom tag
 ```
 
+### 6.6 Authenticating the backend plugin to OpenShift Prometheus
+
+#### The problem — `automountServiceAccountToken: false`
+
+The RHDH operator sets `automountServiceAccountToken: false` on the
+Backstage pod as a security hardening measure. This means
+`/var/run/secrets/kubernetes.io/serviceaccount/token` **does not exist**
+inside the container. Any backend plugin that falls back to reading that
+file for authenticating to cluster services (e.g. Prometheus, which is
+protected by OpenShift's oauth-proxy) will send an empty `Authorization`
+header and receive `401 Unauthorized`.
+
+The metering plugin's `PrometheusClient` uses exactly this fallback:
+
+```typescript
+private getToken(): string {
+  if (this.bearerToken) return this.bearerToken;  // config takes precedence
+  try {
+    return fs.readFileSync(SA_TOKEN_PATH, 'utf8').trim(); // not mounted → ''
+  } catch { return ''; }
+}
+```
+
+Without a token in the config, every Prometheus query fails with 401.
+
+#### The solution — dedicated SA + long-lived token + SealedSecret
+
+The pattern mirrors what the Kubernetes plugin already does for
+`K8S_SERVICE_ACCOUNT_TOKEN`:
+
+```
+1. Dedicated ServiceAccount (cluster-monitoring-view role)  [declarative YAML]
+      │
+      ▼
+2. Long-lived token created by post-install playbook        [per-cluster automation]
+      │
+      ▼
+3. Token sealed with kubeseal → backstage-secrets           [committed to git]
+      │
+      ▼
+4. app-config.yaml: bearerToken: ${METERING_PROMETHEUS_TOKEN}  [declarative]
+      │
+      ▼
+5. ArgoCD syncs → RHDH pod has the env var → Prometheus accepts the token
+```
+
+#### Declarative pieces (in git)
+
+**`k8s/developer-hub/instance/metering-rbac.yaml`** — creates the SA and
+grants the required ClusterRole:
+
+```yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: rhdh-metering-prometheus
+  namespace: developer-hub
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: rhdh-cluster-monitoring-view
+subjects:
+  - kind: ServiceAccount
+    name: rhdh-metering-prometheus
+    namespace: developer-hub
+roleRef:
+  kind: ClusterRole
+  name: cluster-monitoring-view
+  apiGroup: rbac.authorization.k8s.io
+```
+
+**`k8s/developer-hub/instance/app-config.yaml`** — tells the plugin to use
+the token from the environment:
+
+```yaml
+metering:
+  prometheusUrl: https://prometheus-k8s.openshift-monitoring.svc:9091
+  bearerToken: "${METERING_PROMETHEUS_TOKEN}"
+```
+
+#### Per-cluster automation (post-install playbook)
+
+ArgoCD creates the SA on first sync. Once the SA exists, run the
+`metering-prometheus-token` tag to create a long-lived token, seal it with
+the cluster's Sealed Secrets key, inject it into `backstage-secrets`, and
+push the updated SealedSecret to git:
+
+```bash
+ansible-playbook ansible/playbooks/post-install.yml \
+  --vault-password-file ansible/vault_pass \
+  -e ocp_api_url=<cluster-api> \
+  -e ocp_username=admin \
+  -e ocp_password=<password> \
+  --tags metering-prometheus-token
+```
+
+After the playbook runs, trigger an ArgoCD sync and restart the RHDH pod
+so it picks up the new `METERING_PROMETHEUS_TOKEN` environment variable:
+
+```bash
+oc patch application developer-hub-instance -n openshift-gitops \
+  --type merge -p '{"operation":{"sync":{"revision":"HEAD"}}}'
+oc rollout restart deployment/backstage-developer-hub -n developer-hub
+```
+
+#### Why `cluster-monitoring-view` and not `default` SA
+
+Granting `cluster-monitoring-view` to the pod's `default` SA works but is
+broad — any other workload in the namespace that mounts the `default` SA
+token inherits Prometheus access. Using a dedicated SA scopes the privilege
+to exactly the token that the metering plugin holds, following the
+principle of least privilege.
+
 ## 7. Local development loop (`rhdh-local`)
 
 Rebuilding an OCI image for every change is far too slow for iteration.
