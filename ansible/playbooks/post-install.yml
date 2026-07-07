@@ -272,6 +272,72 @@
       tags: keycloak-service-account
 
     # -------------------------------------------------------------------------
+    # Force immediate Keycloak catalog sync in Developer Hub
+    # The Keycloak org entity provider runs on a 30-minute schedule with a
+    # 30-second initial delay. When post-install runs shortly after startup,
+    # that first sync may have already fired with 0 users (before this
+    # playbook created them). Backdating next_run_start_at causes the
+    # scheduler to pick up the task on its next check cycle (~a few seconds),
+    # so users are available for login immediately without waiting 30 minutes.
+    # -------------------------------------------------------------------------
+    - name: Force immediate Keycloak catalog sync in Developer Hub
+      ansible.builtin.command:
+        argv:
+          - oc
+          - exec
+          - backstage-psql-developer-hub-0
+          - -n
+          - developer-hub
+          - --server={{ ocp_api_url }}
+          - --token={{ k8s_api_key }}
+          - --insecure-skip-tls-verify=true
+          - --
+          - psql
+          - -U
+          - postgres
+          - -d
+          - backstage_plugin_catalog
+          - -c
+          - >-
+            UPDATE backstage_backend_tasks__tasks
+            SET next_run_start_at = NOW() - INTERVAL '1 second'
+            WHERE id = 'KeycloakOrgEntityProvider:default:refresh';
+      changed_when: true
+      tags: keycloak-users
+
+    - name: Wait for Keycloak sync to complete and verify users in catalog
+      ansible.builtin.command:
+        argv:
+          - oc
+          - exec
+          - backstage-psql-developer-hub-0
+          - -n
+          - developer-hub
+          - --server={{ ocp_api_url }}
+          - --token={{ k8s_api_key }}
+          - --insecure-skip-tls-verify=true
+          - --
+          - psql
+          - -U
+          - postgres
+          - -d
+          - backstage_plugin_catalog
+          - -t
+          - -c
+          - "SELECT COUNT(*) FROM refresh_state WHERE entity_ref LIKE 'user:%';"
+      register: catalog_user_count
+      until: (catalog_user_count.stdout | trim | int) > 0
+      retries: 6
+      delay: 10
+      changed_when: false
+      tags: keycloak-users
+
+    - name: Report Keycloak catalog sync result
+      ansible.builtin.debug:
+        msg: "Keycloak sync complete — {{ catalog_user_count.stdout | trim }} user(s) now in catalog"
+      tags: keycloak-users
+
+    # -------------------------------------------------------------------------
     # Seal K8S_SERVICE_ACCOUNT_TOKEN for the Kubernetes plugin
     # Creates a long-lived token for the rhdh-k8s-plugin service account,
     # seals it, and commits the updated SealedSecret to git.
