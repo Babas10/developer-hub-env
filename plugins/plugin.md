@@ -607,32 +607,121 @@ so operators see it at config-authoring time, not only at plugin startup.
 
 ## 6. Packaging as a *dynamic* plugin and loading it in RHDH
 
-A "dynamic plugin" is a normal Backstage plugin package built into a
-self-contained `dist-dynamic/` bundle (via
-`@red-hat-developer-hub/cli plugin export`) that RHDH's backend can load
-at runtime from a local path or an OCI image — no rebuild of RHDH itself
-required. Two things make this possible:
+### 6.1 Standard Backstage vs RHDH dynamic plugins
+
+In **standard Backstage** plugins are source code compiled into the
+monorepo and baked into the main application Docker image. Adding or
+updating a plugin means rebuilding the entire `app` image, pushing it, and
+rolling the deployment. You own and maintain the image.
+
+In **RHDH dynamic plugins** the plugin lives in its own OCI image,
+completely decoupled from RHDH. At every pod startup an init container
+(`install-dynamic-plugins`) reads a ConfigMap (`dynamic-plugins.yaml`),
+pulls each plugin OCI image, extracts the `dist-dynamic/` directory, and
+places it in a shared volume that the main RHDH container reads from. RHDH
+itself never changes; only the plugin image changes.
+
+```
+Standard Backstage             RHDH dynamic plugins
+─────────────────────          ────────────────────────────────────────
+Plugin source ──►              Plugin source ──►
+  app image                      dist-dynamic/ ──► OCI image
+     │                                                │
+     ▼                           ConfigMap lists OCI refs
+  Deploy RHDH                          │
+  (contains plugin)             init container pulls image
+                                       │
+                                  shared volume
+                                       │
+                                  RHDH reads plugins
+```
+
+Key differences:
+
+| | Standard Backstage | RHDH dynamic plugin |
+|--|--|--|
+| Plugin update | Rebuild + redeploy RHDH | Push new OCI image, update ConfigMap |
+| RHDH image | Changes every plugin release | Never changes for plugin updates |
+| Versioning | Same version as RHDH app | Independent semver per plugin |
+| Local dev | `yarn dev` in monorepo | `plugin export --dev` into rhdh-local |
+
+### 6.2 What the OCI image contains
+
+The OCI image is a **data-only artifact** built `FROM scratch` — it has no
+OS, no runtime, no shell. It exists purely as a transport mechanism for the
+compiled plugin files:
+
+```
+OCI image filesystem (FROM scratch)
+├── package.json              ← plugin manifest
+├── dist/                     ← compiled backend (or dist-scalprum/ for frontend)
+│   ├── index.cjs.js
+│   ├── database.cjs.js
+│   └── ...
+└── node_modules/             ← private deps bundled at export time
+```
+
+The image also carries an OCI annotation (`io.backstage.dynamic-packages`)
+that encodes a JSON manifest of the plugins inside the image. The
+`install-dynamic-plugins` init container reads this annotation to know
+what it's installing without having to inspect the filesystem first.
+
+The init container extracts the image contents into the
+`dynamic-plugins-root` volume. RHDH scans that volume at startup and loads
+whatever plugins it finds there.
+
+### 6.3 How ArgoCD fits in
+
+ArgoCD **never touches OCI images directly**. The connection runs through a
+ConfigMap:
+
+```
+Git repo (dynamic-plugins.yaml)
+    │
+    ▼
+ArgoCD (wave 3) ──► ConfigMap applied to cluster
+                         │
+                         ▼
+                   install-dynamic-plugins init container
+                   reads ConfigMap, pulls OCI images
+                         │
+                         ▼
+                   dynamic-plugins-root volume
+                         │
+                         ▼
+                   RHDH loads plugins from volume
+```
+
+`k8s/developer-hub/instance/dynamic-plugins.yaml` is a ConfigMap that
+ArgoCD manages as part of wave 3. When you update an OCI image ref in that
+file and push to git, ArgoCD applies the updated ConfigMap. The next time
+the RHDH pod restarts, `install-dynamic-plugins` reads the new ref, pulls
+the new plugin image, and installs it. ArgoCD's role is purely
+"apply a YAML file" — the OCI pull happens entirely inside the cluster.
+
+### 6.4 Plugin config wiring
+
+Two things control how a dynamic plugin is loaded:
 
 - The `scalprum` config in the frontend `package.json` (§3), which is what
   the export command reads to know what to expose as a module-federation
   remote.
-- `dynamic-plugins.yaml`, which tells the running RHDH instance *which*
-  packages to load and, for frontend plugins, *where in the UI* to mount
-  their exported components:
+- `dynamic-plugins.yaml`, which tells RHDH *which* packages to load and,
+  for frontend plugins, *where in the UI* to mount their exported components:
 
   ```68:89:k8s/developer-hub/instance/dynamic-plugins.yaml
-        - package: oci://quay.io/<your-org>/rhdh-plugin-metering-backend:1.0.0
-          disabled: true  # Enable after pushing OCI image
+        - package: oci://quay.io/<your-org>/rhdh-plugin-metering-backend:1.0.0!internal-backstage-plugin-metering-backend
+          disabled: false
 
-        - package: oci://quay.io/<your-org>/rhdh-plugin-metering:1.0.0
-          disabled: true  # Enable after pushing OCI image
+        - package: oci://quay.io/<your-org>/rhdh-plugin-metering:1.0.0!internal-backstage-plugin-metering
+          disabled: false
           pluginConfig:
             dynamicPlugins:
               frontend:
                 internal.backstage-plugin-metering:
                   mountPoints:
                     - mountPoint: entity.page.overview/cards
-                      importName: MeteringCard
+                      importName: MeteringSummaryCard
                       config:
                         layout:
                           gridColumnEnd:
@@ -641,16 +730,126 @@ required. Two things make this possible:
                             xs: span 12
                   entityTabs:
                     - path: /metering
-                      title: Cost
+                      title: Metering
                       mountPoint: entity.page.metering
   ```
 
 Note how `internal.backstage-plugin-metering` (the frontend config key)
-matches `scalprum.name` from `package.json`, and `importName: MeteringCard`
-matches the named export from `plugin.ts` — these string values are the
-contract between your plugin code and the host config, and there's no
-compiler to catch a typo in either, so double-check them if a mounted card
-doesn't show up.
+matches `scalprum.name` from `package.json`, and `importName:
+MeteringSummaryCard` matches the named export from `plugin.ts` — these
+string values are the contract between your plugin code and the host
+config, and there's no compiler to catch a typo in either, so
+double-check them if a mounted card doesn't show up.
+
+### 6.5 Packaging and pushing OCI images with the RHDH CLI
+
+Red Hat provides an official CLI command that handles the entire packaging
+pipeline in one step — no Containerfile needed:
+
+```
+plugin export        ← compile + bundle into dist-dynamic/
+     │
+     ▼
+plugin package       ← build FROM scratch OCI image + add annotations
+     │
+     ▼
+podman push          ← publish to registry
+     │
+     ▼
+dynamic-plugins.yaml ← reference the OCI image by tag + plugin name
+     │
+     ▼
+ArgoCD sync          ← applies ConfigMap to cluster
+     │
+     ▼
+install-dynamic-plugins init container ← pulls image, extracts plugin
+```
+
+#### Step 1 — Export
+
+`plugin export` compiles the TypeScript source and bundles all private
+dependencies into `dist-dynamic/`. Run it from the plugin's package
+directory:
+
+```bash
+cd plugins/metering-backend
+npx @red-hat-developer-hub/cli@1.10 plugin export --clean
+```
+
+For a production build this compiles all files — including migration files
+referenced via static imports — into the `dist/` directory inside
+`dist-dynamic/`. The `--clean` flag removes any previous export first.
+
+#### Step 2 — Package as OCI image
+
+`plugin package` reads `dist-dynamic/`, stages the content, and runs:
+
+```
+FROM scratch
+COPY . .
+```
+
+It also adds an `io.backstage.dynamic-packages` OCI annotation that encodes
+a JSON manifest of the plugins inside the image. The `install-dynamic-plugins`
+init container uses this annotation to identify plugins without scanning the
+filesystem.
+
+```bash
+export QUAY_USER=edubois10
+export PLUGIN=metering-backend
+export VERSION=$(cat package.json | python3 -c "import sys,json; print(json.load(sys.stdin)['version'])")
+
+npx @red-hat-developer-hub/cli@1.10 plugin package \
+  --force-export \
+  --tag quay.io/${QUAY_USER}/rhdh-plugin-${PLUGIN}:${VERSION}
+```
+
+`--force-export` re-runs the export even if `dist-dynamic/` already exists,
+ensuring a clean build. Without it, `plugin package` reuses an existing
+`dist-dynamic/` if present.
+
+The command prints the exact `dynamic-plugins.yaml` snippet to use, including
+the `!plugin-name` suffix:
+
+```
+plugins:
+  - package: oci://quay.io/edubois10/rhdh-plugin-metering-backend:0.1.0!internal-backstage-plugin-metering-backend
+    disabled: false
+```
+
+The `!plugin-name` suffix identifies which plugin to extract when an OCI
+image bundles multiple plugins. Always use the value the CLI prints — do
+not guess it.
+
+#### Step 3 — Push
+
+```bash
+podman push quay.io/${QUAY_USER}/rhdh-plugin-${PLUGIN}:${VERSION}
+```
+
+#### Step 4 — Make the repository public
+
+The RHDH cluster pulls plugin images without any image pull secret by
+default. The quay.io repository **must be set to Public** (Settings →
+Repository Visibility) before the cluster can pull.
+
+#### Step 5 — Update `dynamic-plugins.yaml` and push to git
+
+Update `k8s/developer-hub/instance/dynamic-plugins.yaml` with the OCI ref
+from step 2 and set `disabled: false`. Commit and push — ArgoCD picks up
+the change automatically on the next sync cycle.
+
+#### Automated script
+
+All five steps for both plugins are automated in
+[`plugins/build-oci.sh`](./build-oci.sh):
+
+```bash
+cd ~/PersonalProject/developer-hub-env/plugins
+./build-oci.sh                            # uses defaults (quay.io/edubois10, version from package.json)
+./build-oci.sh --registry quay.io/myorg  # custom registry
+./build-oci.sh --tag 1.2.0               # custom tag
+```
 
 ## 7. Local development loop (`rhdh-local`)
 
@@ -675,9 +874,58 @@ done
 ```
 
 `rhdh-local/configs/dynamic-plugins/dynamic-plugins.override.yaml` then
-points at those exported local paths instead of an OCI image, so you can
-edit → `./export-dev.sh` → restart the `rhdh` container → see the change,
-without ever pushing an image.
+points at those exported local paths instead of an OCI image.
+
+### How rhdh-local storage works
+
+Understanding the volume layout is essential to restart correctly:
+
+```
+rhdh-local/local-plugins/          ← bind mount; export-dev.sh writes here
+         │
+         │  (copied by install-dynamic-plugins init container)
+         ▼
+Podman named volume: rhdh-local_dynamic-plugins-root
+         │
+         │  (mounted read-only into the rhdh container)
+         ▼
+/opt/app-root/src/dynamic-plugins-root/   ← what RHDH reads
+```
+
+`export-dev.sh` only writes to `local-plugins/`. The named volume is a
+**separate location** populated by the `install-dynamic-plugins` init
+container. `podman stop rhdh && podman start rhdh` alone does **not**
+re-run the init container and therefore does **not** sync new exports into
+the volume.
+
+### Correct restart procedure after `export-dev.sh`
+
+```bash
+# In rhdh-local/
+cd ~/PersonalProject/rhdh-local
+
+# 1. Run the init container to sync local-plugins/ → named volume
+#    (wait for it to exit before continuing)
+podman compose run --rm install-dynamic-plugins
+
+# 2. Restart RHDH — now reads the freshly populated volume
+podman stop rhdh && podman start rhdh
+```
+
+### Clean-slate restart (recommended when volume state is suspect)
+
+If the volume has corrupted or stale state from a failed hot-reload:
+
+```bash
+podman compose down
+podman volume rm rhdh-local_dynamic-plugins-root
+podman compose up -d   # respects depends_on: install-dynamic-plugins completes first
+```
+
+`podman compose up` honours the `service_completed_successfully` dependency,
+so RHDH only starts once the volume is fully populated — eliminating the
+race conditions that occur when running init and main containers
+concurrently.
 
 ## 8. Quick-start checklist for a new plugin
 
