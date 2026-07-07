@@ -1,0 +1,13 @@
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: resource-burner
+  description: Cyclic CPU/memory load generator for metering plugin testing (2h high load, 30min idle, repeats indefinitely).
+  annotations:
+    backstage.io/kubernetes-namespace: agent-apps
+    backstage.io/kubernetes-id: resource-burner
+spec:
+  type: service
+  lifecycle: experimental
+  owner: user:default/admin

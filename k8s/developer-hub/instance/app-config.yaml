@@ -94,6 +94,10 @@ data:
           target: https://github.com/Babas10/developer-hub-env/blob/main/catalog/demo-todo.yaml
           rules:
             - allow: [Component]
+        - type: url
+          target: https://github.com/Babas10/developer-hub-env/blob/main/catalog/resource-burner.yaml
+          rules:
+            - allow: [Component]
       providers:
         keycloakOrg:
           default:
