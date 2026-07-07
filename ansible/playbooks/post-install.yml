@@ -422,6 +422,93 @@
       tags: k8s-token
 
     # -------------------------------------------------------------------------
+    # Seal METERING_PROMETHEUS_TOKEN for the metering plugin
+    # Creates a long-lived token for the rhdh-metering-prometheus SA (which has
+    # cluster-monitoring-view), seals it, and commits to backstage-secrets so
+    # the metering backend can authenticate to OpenShift Prometheus.
+    # The RHDH pod has automountServiceAccountToken: false (operator hardening)
+    # so it cannot use the projected SA token — a named token is required.
+    # Usage: --tags metering-prometheus-token
+    # -------------------------------------------------------------------------
+    - name: Create long-lived token for rhdh-metering-prometheus service account
+      ansible.builtin.command:
+        argv:
+          - oc
+          - create
+          - token
+          - rhdh-metering-prometheus
+          - --namespace=developer-hub
+          - --duration=87600h
+          - --server={{ ocp_api_url }}
+          - --token={{ k8s_api_key }}
+          - --insecure-skip-tls-verify=true
+      register: metering_prometheus_token
+      tags: metering-prometheus-token
+
+    - name: Fetch Sealed Secrets public cert for metering token
+      ansible.builtin.command:
+        argv:
+          - oc
+          - get
+          - secret
+          - sealed-secrets-key
+          - --namespace=sealed-secrets
+          - --server={{ ocp_api_url }}
+          - --token={{ k8s_api_key }}
+          - --insecure-skip-tls-verify=true
+          - -o
+          - jsonpath={.data.tls\.crt}
+      register: sealed_cert_b64_metering
+      tags: metering-prometheus-token
+
+    - name: Write Sealed Secrets cert to temp file for metering token
+      ansible.builtin.copy:
+        content: "{{ sealed_cert_b64_metering.stdout | b64decode }}"
+        dest: /tmp/ss_cert_metering.crt
+        mode: '0600'
+      tags: metering-prometheus-token
+
+    - name: Seal METERING_PROMETHEUS_TOKEN
+      ansible.builtin.shell: |
+        printf '%s' "{{ metering_prometheus_token.stdout }}" | \
+          kubeseal --raw \
+            --namespace developer-hub \
+            --name backstage-secrets \
+            --cert /tmp/ss_cert_metering.crt
+      register: sealed_metering_token
+      tags: metering-prometheus-token
+
+    - name: Inject METERING_PROMETHEUS_TOKEN into backstage-secrets-sealed.yaml
+      ansible.builtin.replace:
+        path: "{{ playbook_dir }}/../../k8s/developer-hub/instance/backstage-secrets-sealed.yaml"
+        regexp: '^\s+METERING_PROMETHEUS_TOKEN:.*$'
+        replace: "    METERING_PROMETHEUS_TOKEN: {{ sealed_metering_token.stdout }}"
+      tags: metering-prometheus-token
+
+    - name: Add METERING_PROMETHEUS_TOKEN if not present
+      ansible.builtin.lineinfile:
+        path: "{{ playbook_dir }}/../../k8s/developer-hub/instance/backstage-secrets-sealed.yaml"
+        insertafter: '^\s+K8S_SERVICE_ACCOUNT_TOKEN:.*$'
+        line: "    METERING_PROMETHEUS_TOKEN: {{ sealed_metering_token.stdout }}"
+        regexp: '^\s+METERING_PROMETHEUS_TOKEN:.*$'
+      tags: metering-prometheus-token
+
+    - name: Commit and push sealed METERING_PROMETHEUS_TOKEN
+      ansible.builtin.shell: |
+        cd "{{ playbook_dir }}/../.."
+        git add k8s/developer-hub/instance/backstage-secrets-sealed.yaml
+        git diff --cached --quiet && echo "no-change" || git commit -m "chore: update sealed METERING_PROMETHEUS_TOKEN" && git push
+      register: git_metering_token_push
+      changed_when: "'no-change' not in git_metering_token_push.stdout"
+      tags: metering-prometheus-token
+
+    - name: Clean up temp cert file for metering token
+      ansible.builtin.file:
+        path: /tmp/ss_cert_metering.crt
+        state: absent
+      tags: metering-prometheus-token
+
+    # -------------------------------------------------------------------------
     # Set ArgoCD rhdh account password
     # Requires the rhdh account to exist (ArgoCD CR must be synced first).
     # argocd_rhdh_password must be defined in vault.yml.

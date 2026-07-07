@@ -70,6 +70,7 @@ data:
 
     metering:
       prometheusUrl: https://prometheus-k8s.openshift-monitoring.svc:9091
+      bearerToken: "${METERING_PROMETHEUS_TOKEN}"
       # chargeMode controls which resource signal is billed.
       # Options: usage | requests | limits | max (default: max)
       # max = higher of actual usage vs requests, discourages over-requesting.

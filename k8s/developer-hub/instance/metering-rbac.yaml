@@ -1,14 +1,22 @@
 ---
-# ClusterRoleBinding: grants the RHDH service account read access to
-# OpenShift cluster monitoring (Prometheus) so the metering backend
-# plugin can query CPU and memory metrics.
+# Dedicated service account for the metering plugin to query OpenShift Prometheus.
+# The RHDH pod has automountServiceAccountToken: false (RHDH operator security hardening),
+# so it cannot rely on the default projected SA token. A long-lived token for this SA
+# is created by the post-install playbook (--tags metering-prometheus-token), sealed,
+# and injected into backstage-secrets as METERING_PROMETHEUS_TOKEN.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: rhdh-metering-prometheus
+  namespace: developer-hub
+---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   name: rhdh-cluster-monitoring-view
 subjects:
   - kind: ServiceAccount
-    name: default
+    name: rhdh-metering-prometheus
     namespace: developer-hub
 roleRef:
   kind: ClusterRole
