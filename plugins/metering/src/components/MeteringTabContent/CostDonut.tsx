@@ -7,9 +7,9 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
-import { Typography } from '@material-ui/core';
 import { CostResult } from '../../api';
 import { formatUsd } from '../common/format';
+import { Typography } from '@material-ui/core';
 
 interface Slice {
   name: string;
@@ -24,30 +24,6 @@ const SLICE_DEFS = [
   { name: 'Memory', getVal: (c: CostResult) => c.memoryCostPerHour, color: '#388e3c' },
   { name: 'GPU',    getVal: (c: CostResult) => c.gpuCostPerHour,    color: '#f57c00' },
 ];
-
-interface DonutTooltipProps {
-  active?: boolean;
-  payload?: Array<{ name?: string; value?: number }>;
-}
-
-function DonutTooltip({ active, payload }: DonutTooltipProps) {
-  if (!active || !payload?.length) return null;
-  const { name, value } = payload[0];
-  return (
-    <div
-      style={{
-        background: '#fff',
-        border: '1px solid #e0e0e0',
-        borderRadius: 4,
-        padding: '6px 10px',
-      }}
-    >
-      <Typography variant="caption">
-        <strong>{name}</strong>: {formatUsd(value ?? 0)}/hr
-      </Typography>
-    </div>
-  );
-}
 
 interface Props {
   cost: CostResult;
@@ -85,7 +61,10 @@ export function CostDonut({ cost }: Props) {
             <Cell key={slice.name} fill={slice.color} />
           ))}
         </Pie>
-        <Tooltip content={<DonutTooltip />} />
+        <Tooltip
+          formatter={((value: number, name: string) =>
+            [`${formatUsd(value)}/hr`, name]) as any}
+        />
         <Legend
           iconType="circle"
           iconSize={10}

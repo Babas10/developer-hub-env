@@ -90,7 +90,7 @@ export function useMeteringData(windowHours: number): MeteringData {
   );
 
   const historyState = useAsync<CostHistoryPoint[]>(
-    () => meteringApi.getCostHistory({ entityRef, days: 30 }),
+    () => meteringApi.getCostHistory({ entityRef, days: 180 }),
     [entityRef],
   );
 

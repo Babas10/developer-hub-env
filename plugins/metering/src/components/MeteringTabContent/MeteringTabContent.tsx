@@ -174,7 +174,7 @@ export function MeteringTabContent() {
       )}
 
       <Grid item>
-        <InfoCard title="30-Day Cost Trend">
+        <InfoCard title="6-Month Cost Trend">
           <CostTrendChart historyState={historyState} />
         </InfoCard>
       </Grid>

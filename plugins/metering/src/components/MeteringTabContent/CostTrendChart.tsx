@@ -13,43 +13,64 @@ import { Progress } from '@backstage/core-components';
 import { CostHistoryPoint } from '../../api';
 import { formatUsd } from '../common/format';
 
+// Data point uses a numeric Unix-ms timestamp as the X key so Recharts
+// treats the axis as a continuous time scale rather than a categorical one.
+// Without this, monthly rollup points and hourly points get equal pixel width,
+// which completely distorts the timeline.
 interface ChartPoint {
-  label: string;
+  ts: number;   // Unix ms
   cost: number;
 }
 
-function formatAxisDate(isoStr: string): string {
-  return new Date(isoStr).toLocaleDateString(undefined, {
+/**
+ * Compute monthly tick positions spanning the data range.
+ * Returns the first-of-month timestamps (UTC midnight) within [min, max].
+ * Falls back to weekly ticks for ranges under 60 days.
+ */
+function computeTicks(points: ChartPoint[]): number[] {
+  if (points.length === 0) return [];
+  const min = points[0].ts;
+  const max = points[points.length - 1].ts;
+  const rangeDays = (max - min) / 86_400_000;
+
+  const ticks: number[] = [];
+
+  if (rangeDays > 60) {
+    // One tick per calendar month
+    const d = new Date(min);
+    d.setUTCDate(1);
+    d.setUTCHours(0, 0, 0, 0);
+    while (d.getTime() <= max) {
+      ticks.push(d.getTime());
+      d.setUTCMonth(d.getUTCMonth() + 1);
+    }
+  } else {
+    // One tick per week
+    const d = new Date(min);
+    d.setUTCHours(0, 0, 0, 0);
+    while (d.getTime() <= max) {
+      ticks.push(d.getTime());
+      d.setUTCDate(d.getUTCDate() + 7);
+    }
+  }
+
+  return ticks;
+}
+
+function formatTick(ts: number, rangeDays: number): string {
+  const d = new Date(ts);
+  if (rangeDays > 60) {
+    return d.toLocaleDateString(undefined, { month: 'short', year: '2-digit' });
+  }
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+function formatTooltipLabel(ts: number): string {
+  return new Date(ts).toLocaleDateString(undefined, {
+    year: 'numeric',
     month: 'short',
     day: 'numeric',
   });
-}
-
-interface TrendTooltipProps {
-  active?: boolean;
-  payload?: Array<{ value?: number }>;
-  label?: string;
-}
-
-function TrendTooltip({ active, payload, label }: TrendTooltipProps) {
-  if (!active || !payload?.length) return null;
-  return (
-    <div
-      style={{
-        background: '#fff',
-        border: '1px solid #e0e0e0',
-        borderRadius: 4,
-        padding: '6px 10px',
-      }}
-    >
-      <Typography variant="caption">
-        <strong>{label}</strong>
-      </Typography>
-      <Typography variant="caption" display="block">
-        {formatUsd(payload[0].value ?? 0, 4)}/hr
-      </Typography>
-    </div>
-  );
 }
 
 interface Props {
@@ -85,18 +106,27 @@ export function CostTrendChart({ historyState }: Props) {
   }
 
   const data: ChartPoint[] = points.map(p => ({
-    label: formatAxisDate(p.sampledAt),
+    ts: new Date(p.sampledAt).getTime(),
     cost: p.hourlyCost,
   }));
+
+  const ticks = computeTicks(data);
+  const rangeDays = data.length > 1
+    ? (data[data.length - 1].ts - data[0].ts) / 86_400_000
+    : 1;
 
   return (
     <ResponsiveContainer width="100%" height={220}>
       <LineChart data={data} margin={{ top: 4, right: 16, bottom: 4, left: 8 }}>
         <CartesianGrid strokeDasharray="3 3" vertical={false} />
         <XAxis
-          dataKey="label"
+          dataKey="ts"
+          type="number"
+          scale="time"
+          domain={['dataMin', 'dataMax']}
+          ticks={ticks}
+          tickFormatter={(ts: number) => formatTick(ts, rangeDays)}
           tick={{ fontSize: 11 }}
-          interval="preserveStartEnd"
           axisLine={false}
           tickLine={false}
         />
@@ -107,7 +137,12 @@ export function CostTrendChart({ historyState }: Props) {
           axisLine={false}
           tickLine={false}
         />
-        <Tooltip content={<TrendTooltip />} />
+        <Tooltip
+          formatter={((value: number) =>
+            [`${formatUsd(value, 4)}/hr`, 'Hourly cost']) as any}
+          labelFormatter={((ts: number) =>
+            formatTooltipLabel(ts)) as any}
+        />
         <Line
           type="monotone"
           dataKey="cost"
