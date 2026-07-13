@@ -297,6 +297,24 @@
       delay: 20
       tags: keycloak-users
 
+    - name: Wait for Backstage to initialize databases (RHDH deployment ready)
+      kubernetes.core.k8s_info:
+        host: "{{ ocp_api_url }}"
+        api_key: "{{ k8s_api_key }}"
+        validate_certs: false
+        api_version: apps/v1
+        kind: Deployment
+        name: backstage-developer-hub
+        namespace: developer-hub
+      register: rhdh_deploy
+      until:
+        - rhdh_deploy.resources | length > 0
+        - rhdh_deploy.resources[0].status.readyReplicas is defined
+        - rhdh_deploy.resources[0].status.readyReplicas >= 1
+      retries: 30
+      delay: 20
+      tags: keycloak-users
+
     # -------------------------------------------------------------------------
     # Force immediate Keycloak catalog sync in Developer Hub
     # The Keycloak org entity provider runs on a 30-minute schedule with a
