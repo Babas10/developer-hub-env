@@ -17,22 +17,24 @@ import {
   Divider,
   Grid,
   IconButton,
+  Tooltip,
 } from '@material-ui/core';
 import GetAppIcon from '@material-ui/icons/GetApp';
 import CloseIcon from '@material-ui/icons/Close';
 import AssessmentIcon from '@material-ui/icons/Assessment';
+import InfoOutlinedIcon from '@material-ui/icons/InfoOutlined';
 import {
   BarChart,
   Bar,
   XAxis,
   YAxis,
   CartesianGrid,
-  Tooltip,
+  Tooltip as RechartsTooltip,
   ResponsiveContainer,
 } from 'recharts';
 import { useApi } from '@backstage/core-plugin-api';
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 import {
   meteringApiRef,
   MonthlyReport,
@@ -87,7 +89,7 @@ function exportCsv(report: MonthlyReport, entityRef: string): void {
 }
 
 function exportPdf(report: MonthlyReport, entityRef: string): void {
-  const doc = new jsPDF() as any;
+  const doc = new jsPDF();
 
   doc.setFontSize(18);
   doc.text(`Cost Report — ${formatMonth(report.month)}`, 14, 18);
@@ -102,29 +104,26 @@ function exportPdf(report: MonthlyReport, entityRef: string): void {
   if (report.summary) {
     doc.setFontSize(12);
     doc.text('Monthly Summary', 14, y);
-    y += 8;
-    doc.setFontSize(10);
+    y += 6;
 
-    const summaryData = [
-      ['Total Cost', `$${report.summary.totalCost.toFixed(2)}`],
-      ['Avg Daily Cost', `$${report.summary.avgDailyCost.toFixed(2)}`],
-      ['Peak Day', report.summary.peakDate
-        ? `${report.summary.peakDate} ($${report.summary.peakCost.toFixed(2)})`
-        : 'N/A'],
-      ['Avg CPU', `${report.summary.avgCpuCores.toFixed(3)} cores`],
-      ['Avg Memory', `${report.summary.avgMemGiB.toFixed(3)} GiB`],
-      ['Total Samples', String(report.summary.sampleCount)],
-    ];
-
-    doc.autoTable({
+    autoTable(doc, {
       startY: y,
       head: [],
-      body: summaryData,
+      body: [
+        ['Total Cost',     `$${report.summary.totalCost.toFixed(2)}`],
+        ['Avg Daily Cost', `$${report.summary.avgDailyCost.toFixed(2)}`],
+        ['Peak Day',       report.summary.peakDate
+          ? `${report.summary.peakDate} ($${report.summary.peakCost.toFixed(2)})`
+          : 'N/A'],
+        ['Avg CPU',        `${report.summary.avgCpuCores.toFixed(3)} cores`],
+        ['Avg Memory',     `${report.summary.avgMemGiB.toFixed(3)} GiB`],
+        ['Total Samples',  String(report.summary.sampleCount)],
+      ],
       theme: 'plain',
       styles: { fontSize: 10, cellPadding: 2 },
       columnStyles: { 0: { fontStyle: 'bold', cellWidth: 50 } },
     });
-    y = doc.lastAutoTable.finalY + 10;
+    y = (doc as any).lastAutoTable.finalY + 10;
   }
 
   if (report.dailyRows.length > 0) {
@@ -132,7 +131,7 @@ function exportPdf(report: MonthlyReport, entityRef: string): void {
     doc.text('Daily Breakdown', 14, y);
     y += 4;
 
-    doc.autoTable({
+    autoTable(doc, {
       startY: y,
       head: [['Date', 'CPU (cores)', 'Mem (GiB)', 'GPU', 'Daily Cost ($)', 'Samples']],
       body: report.dailyRows.map(r => [
@@ -141,7 +140,7 @@ function exportPdf(report: MonthlyReport, entityRef: string): void {
         r.avgMemGiB.toFixed(3),
         r.avgGpuCount.toFixed(3),
         r.dailyCost.toFixed(4),
-        r.sampleCount,
+        String(r.sampleCount),
       ]),
       styles: { fontSize: 9 },
       headStyles: { fillColor: [25, 118, 210] },
@@ -198,7 +197,7 @@ function ReportPreview({ report }: { report: MonthlyReport }) {
                 tickFormatter={(v: number) => formatUsd(v, 2)}
                 width={56}
               />
-              <Tooltip formatter={((v: number) => [formatUsd(v, 4), 'Daily cost']) as any} />
+              <RechartsTooltip formatter={((v: number) => [formatUsd(v, 4), 'Daily cost']) as any} />
               <Bar dataKey="cost" fill="#1976d2" radius={[2, 2, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
@@ -327,8 +326,14 @@ export function ReportDrawer({ entityRef }: Props) {
               >
                 {months.map(m => (
                   <MenuItem key={m.month} value={m.month}>
-                    {formatMonth(m.month)}
-                    {!m.hasDailyData && ' (summary only)'}
+                    <Box display="flex" alignItems="center" style={{ gap: 6 }}>
+                      {formatMonth(m.month)}
+                      {!m.hasDailyData && (
+                        <Tooltip title="Daily breakdown unavailable — hourly data for this month has been aggregated into a monthly total. Only the summary is shown.">
+                          <InfoOutlinedIcon style={{ fontSize: 14, color: '#888' }} />
+                        </Tooltip>
+                      )}
+                    </Box>
                   </MenuItem>
                 ))}
               </Select>
