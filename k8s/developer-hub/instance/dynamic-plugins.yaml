@@ -78,6 +78,12 @@ data:
                   - mountPoint: entity.page.overview/cards
                     importName: MeteringSummaryCard
                     config:
+                      # Only show the cost card on entities that have the
+                      # Kubernetes annotation — avoids a "missing annotations"
+                      # message on every non-instrumented component.
+                      if:
+                        allOf:
+                          - hasAnnotation: backstage.io/kubernetes-namespace
                       layout:
                         gridColumnEnd:
                           lg: span 4
@@ -92,6 +98,9 @@ data:
                   - path: /metering
                     title: Metering
                     mountPoint: entity.page.metering
+                    if:
+                      allOf:
+                        - hasAnnotation: backstage.io/kubernetes-namespace
 
 
       - package: oci://ghcr.io/redhat-developer/rhdh-plugin-export-overlays/backstage-community-plugin-tekton:bs_1.49.4__3.37.0

@@ -86,6 +86,13 @@ plugins:
               - mountPoint: entity.page.overview/cards
                 importName: MeteringSummaryCard
                 config:
+                  # Only render on entities with the Kubernetes namespace annotation.
+                  # Without this filter the card appears on every entity in the
+                  # catalog and shows a "missing annotations" placeholder instead
+                  # of cost data, which is noisy in large catalogs.
+                  if:
+                    allOf:
+                      - hasAnnotation: backstage.io/kubernetes-namespace
                   layout:
                     gridColumnEnd:
                       lg: span 4
@@ -100,7 +107,16 @@ plugins:
               - path: /metering
                 title: Metering
                 mountPoint: entity.page.metering
+                if:
+                  allOf:
+                    - hasAnnotation: backstage.io/kubernetes-namespace
 ```
+
+The `hasAnnotation` condition is a **standard Backstage annotation check** —
+the same `backstage.io/kubernetes-namespace` annotation used by the Backstage
+Kubernetes plugin. Any entity that already works with the Kubernetes or Tekton
+plugins will automatically get the Metering card and tab without any additional
+configuration.
 
 ### 4.2 Add `metering` config block to `app-config.yaml`
 
@@ -503,6 +519,33 @@ Repositories must be set to **Public** on quay.io before RHDH can pull
 without cluster-level image pull secrets.
 
 ---
+
+## Metrics source compatibility
+
+The plugin queries the **Prometheus HTTP API** (`/api/v1/query`). Any system
+that exposes this API with the same metric names works without code changes:
+
+| Source | Compatible | Notes |
+|--------|-----------|-------|
+| OpenShift Prometheus | ✅ | Default — port 9091 with OAuth proxy |
+| Thanos Querier | ✅ | OpenShift already routes `:9091` through Thanos |
+| VictoriaMetrics | ✅ | Drop-in Prometheus API |
+| Grafana Mimir / Cortex | ✅ | Prometheus-compatible |
+| AWS Managed Service for Prometheus | ✅ | Same API — configure SigV4 bearer token |
+| GCP Managed Prometheus | ✅ | Same API — use GCP service-account token |
+| Datadog | ❌ | Different query API — would need a new client |
+| Dynatrace | ❌ | Different query API |
+| New Relic | ❌ | Different query API |
+| InfluxDB | ❌ | Different query language (Flux/InfluxQL) |
+
+The underlying metrics (`container_cpu_usage_seconds_total`,
+`kube_pod_container_resource_requests`, etc.) come from **cAdvisor** and
+**kube-state-metrics**, which are deployed by default in every Kubernetes
+monitoring stack. Any Prometheus-compatible backend that scrapes those exporters
+will have the required metrics.
+
+For a future v2, abstracting `PrometheusClient` behind a `MetricsClient`
+interface would allow pluggable backends for non-Prometheus systems.
 
 ## Backstage compatibility — extended note
 
