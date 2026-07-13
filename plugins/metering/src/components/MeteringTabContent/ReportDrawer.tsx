@@ -50,14 +50,27 @@ function formatMonth(yyyyMm: string): string {
   return date.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
 }
 
+/** Extracts a human-readable name from a Backstage entityRef.
+ *  "component:default/resource-burner" → "resource-burner" */
+function friendlyName(entityRef: string): string {
+  return entityRef.includes('/') ? entityRef.split('/').pop()! : entityRef;
+}
+
 function exportCsv(report: MonthlyReport, entityRef: string): void {
-  const header = ['Date', 'Avg CPU (cores)', 'Avg Mem (GiB)', 'Avg GPU', 'Daily Cost ($)', 'Samples'];
+  const hasGpu = report.dailyRows.some(r => r.avgGpuCount > 0);
+
+  const header = [
+    'Date', 'Avg CPU (cores)', 'Avg Mem (GiB)',
+    ...(hasGpu ? ['Avg GPU'] : []),
+    'Daily Cost ($)', 'Data Points',
+  ];
+
   const rows = report.dailyRows.map(r => [
     r.date,
     r.avgCpuCores.toFixed(3),
     r.avgMemGiB.toFixed(3),
-    r.avgGpuCount.toFixed(3),
-    r.dailyCost.toFixed(4),
+    ...(hasGpu ? [r.avgGpuCount.toFixed(3)] : []),
+    r.dailyCost.toFixed(2),
     String(r.sampleCount),
   ]);
 
@@ -65,13 +78,13 @@ function exportCsv(report: MonthlyReport, entityRef: string): void {
     ? [
         [],
         ['MONTHLY SUMMARY'],
-        ['Total Cost ($)', report.summary.totalCost.toFixed(2)],
+        ['Total Cost ($)',    report.summary.totalCost.toFixed(2)],
         ['Avg Daily Cost ($)', report.summary.avgDailyCost.toFixed(2)],
-        ['Peak Day', report.summary.peakDate ?? 'N/A'],
+        ['Peak Day',          report.summary.peakDate ?? 'N/A'],
         ['Peak Day Cost ($)', report.summary.peakCost.toFixed(2)],
-        ['Avg CPU (cores)', report.summary.avgCpuCores.toFixed(3)],
-        ['Avg Mem (GiB)', report.summary.avgMemGiB.toFixed(3)],
-        ['Total Samples', String(report.summary.sampleCount)],
+        ['Avg CPU (cores)',   report.summary.avgCpuCores.toFixed(3)],
+        ['Avg Mem (GiB)',     report.summary.avgMemGiB.toFixed(3)],
+        ['Data Points',       String(report.summary.sampleCount)],
       ]
     : [];
 
@@ -83,72 +96,126 @@ function exportCsv(report: MonthlyReport, entityRef: string): void {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `metering-report_${entityRef.replace(/[:/]/g, '_')}_${report.month}.csv`;
+  a.download = `metering-report_${friendlyName(entityRef)}_${report.month}.csv`;
   a.click();
   URL.revokeObjectURL(url);
 }
 
 function exportPdf(report: MonthlyReport, entityRef: string): void {
   const doc = new jsPDF();
+  const pageW = doc.internal.pageSize.getWidth();
+  const margin = 14;
+  const name = friendlyName(entityRef);
+  const hasGpu = report.dailyRows.some(r => r.avgGpuCount > 0);
 
-  doc.setFontSize(18);
-  doc.text(`Cost Report — ${formatMonth(report.month)}`, 14, 18);
-
-  doc.setFontSize(10);
-  doc.setTextColor(100);
-  doc.text(`Entity: ${entityRef}`, 14, 26);
+  // ── Header ────────────────────────────────────────────────────────────
+  doc.setFillColor(25, 118, 210);
+  doc.rect(0, 0, pageW, 28, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(16);
+  doc.setFont('helvetica', 'bold');
+  doc.text(`Cost Report — ${formatMonth(report.month)}`, margin, 12);
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`${name}  ·  ${entityRef}`, margin, 22);
   doc.setTextColor(0);
 
-  let y = 36;
+  let y = 38;
 
+  // ── KPI cards ─────────────────────────────────────────────────────────
   if (report.summary) {
-    doc.setFontSize(12);
-    doc.text('Monthly Summary', 14, y);
-    y += 6;
+    const kpis = [
+      { label: 'Total Cost',     value: `$${report.summary.totalCost.toFixed(2)}` },
+      { label: 'Avg Daily Cost', value: `$${report.summary.avgDailyCost.toFixed(2)}` },
+      { label: 'Peak Day',       value: report.summary.peakDate
+          ? `${report.summary.peakDate.slice(5)}\n$${report.summary.peakCost.toFixed(2)}`
+          : 'N/A' },
+      { label: 'Data Points',    value: String(report.summary.sampleCount) },
+    ];
 
-    autoTable(doc, {
-      startY: y,
-      head: [],
-      body: [
-        ['Total Cost',     `$${report.summary.totalCost.toFixed(2)}`],
-        ['Avg Daily Cost', `$${report.summary.avgDailyCost.toFixed(2)}`],
-        ['Peak Day',       report.summary.peakDate
-          ? `${report.summary.peakDate} ($${report.summary.peakCost.toFixed(2)})`
-          : 'N/A'],
-        ['Avg CPU',        `${report.summary.avgCpuCores.toFixed(3)} cores`],
-        ['Avg Memory',     `${report.summary.avgMemGiB.toFixed(3)} GiB`],
-        ['Total Samples',  String(report.summary.sampleCount)],
-      ],
-      theme: 'plain',
-      styles: { fontSize: 10, cellPadding: 2 },
-      columnStyles: { 0: { fontStyle: 'bold', cellWidth: 50 } },
+    const cardW = (pageW - margin * 2 - 6) / kpis.length;
+    const cardH = 24;
+
+    kpis.forEach((kpi, i) => {
+      const x = margin + i * (cardW + 2);
+      doc.setFillColor(240, 246, 255);
+      doc.setDrawColor(25, 118, 210);
+      doc.roundedRect(x, y, cardW, cardH, 2, 2, 'FD');
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(13);
+      doc.setTextColor(25, 118, 210);
+      doc.text(kpi.value.split('\n')[0], x + cardW / 2, y + 10, { align: 'center' });
+      if (kpi.value.includes('\n')) {
+        doc.setFontSize(10);
+        doc.text(kpi.value.split('\n')[1], x + cardW / 2, y + 17, { align: 'center' });
+      }
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8);
+      doc.setTextColor(100);
+      doc.text(kpi.label, x + cardW / 2, y + cardH - 3, { align: 'center' });
     });
-    y = (doc as any).lastAutoTable.finalY + 10;
+
+    doc.setTextColor(0);
+    y += cardH + 10;
+
+    // Secondary summary row
+    doc.setFontSize(9);
+    doc.setTextColor(80);
+    doc.text(
+      `Avg CPU: ${report.summary.avgCpuCores.toFixed(3)} cores   ` +
+      `Avg Mem: ${report.summary.avgMemGiB.toFixed(3)} GiB`,
+      margin, y,
+    );
+    doc.setTextColor(0);
+    y += 8;
   }
 
+  // ── Daily breakdown table ─────────────────────────────────────────────
   if (report.dailyRows.length > 0) {
-    doc.setFontSize(12);
-    doc.text('Daily Breakdown', 14, y);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.text('Daily Breakdown', margin, y);
+    doc.setFont('helvetica', 'normal');
     y += 4;
 
+    const head = [
+      'Date',
+      'CPU (cores)',
+      'Mem (GiB)',
+      ...(hasGpu ? ['GPU'] : []),
+      'Daily Cost ($)',
+      'Data Points',
+    ];
+
+    const body = report.dailyRows.map(r => [
+      r.date,
+      r.avgCpuCores.toFixed(3),
+      r.avgMemGiB.toFixed(3),
+      ...(hasGpu ? [r.avgGpuCount.toFixed(3)] : []),
+      r.dailyCost.toFixed(2),   // 2 decimal places — consistent with summary
+      String(r.sampleCount),
+    ]);
+
+    // Column count varies based on GPU visibility
+    const numericColStart = 1;
+    const colCount = head.length;
+    const numericStyles: Record<number, object> = {};
+    for (let c = numericColStart; c < colCount; c++) {
+      numericStyles[c] = { halign: 'right' };
+    }
+
     autoTable(doc, {
       startY: y,
-      head: [['Date', 'CPU (cores)', 'Mem (GiB)', 'GPU', 'Daily Cost ($)', 'Samples']],
-      body: report.dailyRows.map(r => [
-        r.date,
-        r.avgCpuCores.toFixed(3),
-        r.avgMemGiB.toFixed(3),
-        r.avgGpuCount.toFixed(3),
-        r.dailyCost.toFixed(4),
-        String(r.sampleCount),
-      ]),
-      styles: { fontSize: 9 },
-      headStyles: { fillColor: [25, 118, 210] },
-      alternateRowStyles: { fillColor: [245, 245, 245] },
+      head: [head],
+      body,
+      styles: { fontSize: 9, cellPadding: 2 },
+      headStyles: { fillColor: [25, 118, 210], fontStyle: 'bold', halign: 'center' },
+      alternateRowStyles: { fillColor: [248, 250, 255] },
+      columnStyles: numericStyles,
     });
   }
 
-  doc.save(`metering-report_${entityRef.replace(/[:/]/g, '_')}_${report.month}.pdf`);
+  doc.save(`metering-report_${name}_${report.month}.pdf`);
 }
 
 // ── ReportPreview ─────────────────────────────────────────────────────────────
