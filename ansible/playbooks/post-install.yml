@@ -272,6 +272,32 @@
       tags: keycloak-service-account
 
     # -------------------------------------------------------------------------
+    # Wait for Developer Hub PostgreSQL pod to be ready
+    # The RHDH operator provisions the developer-hub namespace and PostgreSQL
+    # StatefulSet asynchronously after the Backstage CR is synced. ArgoCD may
+    # report the app as Healthy before the psql pod is actually Running, so
+    # we poll here rather than relying on ArgoCD health alone.
+    # -------------------------------------------------------------------------
+    - name: Wait for Developer Hub PostgreSQL pod to be Ready
+      kubernetes.core.k8s_info:
+        host: "{{ ocp_api_url }}"
+        api_key: "{{ k8s_api_key }}"
+        validate_certs: false
+        api_version: v1
+        kind: Pod
+        name: backstage-psql-developer-hub-0
+        namespace: developer-hub
+      register: psql_pod_info
+      until:
+        - psql_pod_info.resources | length > 0
+        - psql_pod_info.resources[0].status.phase == "Running"
+        - psql_pod_info.resources[0].status.containerStatuses is defined
+        - psql_pod_info.resources[0].status.containerStatuses[0].ready == true
+      retries: 30
+      delay: 20
+      tags: keycloak-users
+
+    # -------------------------------------------------------------------------
     # Force immediate Keycloak catalog sync in Developer Hub
     # The Keycloak org entity provider runs on a 30-minute schedule with a
     # 30-second initial delay. When post-install runs shortly after startup,
@@ -430,6 +456,21 @@
     # so it cannot use the projected SA token — a named token is required.
     # Usage: --tags metering-prometheus-token
     # -------------------------------------------------------------------------
+    - name: Wait for rhdh-metering-prometheus service account to exist
+      kubernetes.core.k8s_info:
+        host: "{{ ocp_api_url }}"
+        api_key: "{{ k8s_api_key }}"
+        validate_certs: false
+        api_version: v1
+        kind: ServiceAccount
+        name: rhdh-metering-prometheus
+        namespace: developer-hub
+      register: metering_sa_info
+      until: metering_sa_info.resources | length > 0
+      retries: 20
+      delay: 15
+      tags: metering-prometheus-token
+
     - name: Create long-lived token for rhdh-metering-prometheus service account
       ansible.builtin.command:
         argv:
