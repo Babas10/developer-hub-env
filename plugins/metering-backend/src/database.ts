@@ -163,6 +163,178 @@ export async function getHistory(
   );
 }
 
+// ── Report helpers ────────────────────────────────────────────────────────────
+
+export interface DailyReportRow {
+  date: string;          // "YYYY-MM-DD"
+  avgCpuCores: number;
+  avgMemGiB: number;
+  avgGpuCount: number;
+  dailyCost: number;     // sum of all hourly costs for that day
+  sampleCount: number;
+}
+
+export interface MonthlyReportSummary {
+  totalCost: number;
+  avgDailyCost: number;
+  peakDate: string | null;
+  peakCost: number;
+  avgCpuCores: number;
+  avgMemGiB: number;
+  sampleCount: number;
+}
+
+export interface MonthlyReportResult {
+  entityRef: string;
+  month: string;              // "YYYY-MM"
+  hasDailyBreakdown: boolean; // false when hourly rows were already rolled up
+  dailyRows: DailyReportRow[];
+  summary: MonthlyReportSummary | null;
+}
+
+/**
+ * Returns the list of months that have cost data for the given entity,
+ * drawn from both storage tiers. Sorted newest-first so the picker
+ * defaults to the most recent available month.
+ *
+ * `hasDailyData` is true when hourly rows still exist in cost_snapshots
+ * (i.e. the month is within rollupAfterDays). Once a month has been rolled
+ * up and its hourly rows deleted, only the monthly aggregate is available.
+ */
+export async function getAvailableMonths(
+  knex: Knex,
+  entityRef: string,
+): Promise<Array<{ month: string; hasDailyData: boolean }>> {
+  const monthExpr = monthTruncExpr(knex, 'sampled_at');
+
+  const snapshotMonths: Array<{ month_start: string }> = await knex('cost_snapshots')
+    .where('entity_ref', entityRef)
+    .groupByRaw(`${monthExpr}`)
+    .select(knex.raw(`${monthExpr} as month_start`));
+
+  const rollupMonths: Array<{ month_start: string }> = await knex('cost_monthly_rollups')
+    .where('entity_ref', entityRef)
+    .orderBy('month_start', 'desc')
+    .select('month_start');
+
+  const snapshotSet = new Set(
+    snapshotMonths.map(r => String(r.month_start).slice(0, 7)),
+  );
+
+  const months = new Map<string, boolean>(); // month → hasDailyData
+
+  for (const r of rollupMonths) {
+    const month = String(r.month_start).slice(0, 7);
+    months.set(month, snapshotSet.has(month));
+  }
+
+  for (const month of snapshotSet) {
+    if (!months.has(month)) {
+      months.set(month, true);
+    }
+  }
+
+  return Array.from(months.entries())
+    .map(([month, hasDailyData]) => ({ month, hasDailyData }))
+    .sort((a, b) => b.month.localeCompare(a.month));
+}
+
+/**
+ * Builds a full report for the requested month:
+ *   - Daily rows: aggregated from cost_snapshots (if still present)
+ *   - Summary: from cost_monthly_rollups when available, otherwise
+ *              computed from the daily rows
+ *
+ * When the month has been rolled up and hourly rows were deleted,
+ * `hasDailyBreakdown` is false and `dailyRows` is empty — only the
+ * monthly summary is returned.
+ */
+export async function getMonthlyReport(
+  knex: Knex,
+  entityRef: string,
+  month: string, // "YYYY-MM"
+): Promise<MonthlyReportResult> {
+  const monthStart = `${month}-01`;
+  const nextDate = new Date(`${monthStart}T00:00:00Z`);
+  nextDate.setUTCMonth(nextDate.getUTCMonth() + 1);
+  const monthEnd = nextDate.toISOString().slice(0, 10);
+
+  const dateTrunc = isSQLite(knex)
+    ? `strftime('%Y-%m-%d', sampled_at)`
+    : `DATE(sampled_at)`;
+
+  // Daily aggregates from the hourly tier
+  const rawDaily: Array<{
+    date: string;
+    avg_cpu: number;
+    avg_mem: number;
+    avg_gpu: number;
+    daily_cost: number;
+    sample_count: number;
+  }> = await knex('cost_snapshots')
+    .where('entity_ref', entityRef)
+    .where('sampled_at', '>=', `${monthStart}T00:00:00.000Z`)
+    .where('sampled_at', '<',  `${monthEnd}T00:00:00.000Z`)
+    .groupByRaw(dateTrunc)
+    .orderByRaw(dateTrunc)
+    .select(
+      knex.raw(`${dateTrunc} as date`),
+      knex.raw('AVG(cpu_cores)   as avg_cpu'),
+      knex.raw('AVG(mem_gib)     as avg_mem'),
+      knex.raw('AVG(gpu_count)   as avg_gpu'),
+      knex.raw('SUM(hourly_cost) as daily_cost'),
+      knex.raw('COUNT(*)         as sample_count'),
+    );
+
+  const dailyRows: DailyReportRow[] = rawDaily.map(r => ({
+    date:         String(r.date),
+    avgCpuCores:  Number(r.avg_cpu),
+    avgMemGiB:    Number(r.avg_mem),
+    avgGpuCount:  Number(r.avg_gpu) || 0,
+    dailyCost:    Number(r.daily_cost),
+    sampleCount:  Number(r.sample_count),
+  }));
+
+  // Monthly rollup (may exist even when daily rows are still present for
+  // partial months that started being rolled up mid-month)
+  const rollup = await knex('cost_monthly_rollups')
+    .where('entity_ref', entityRef)
+    .where('month_start', monthStart)
+    .first();
+
+  if (dailyRows.length === 0 && !rollup) {
+    return { entityRef, month, hasDailyBreakdown: false, dailyRows: [], summary: null };
+  }
+
+  // Prefer rollup for the monthly total when available (authoritative);
+  // fall back to summing the daily rows for months not yet rolled up.
+  const totalCost    = rollup ? Number(rollup.total_cost)    : dailyRows.reduce((s, r) => s + r.dailyCost, 0);
+  const avgCpuCores  = rollup ? Number(rollup.avg_cpu_cores) : dailyRows.reduce((s, r) => s + r.avgCpuCores, 0) / dailyRows.length;
+  const avgMemGiB    = rollup ? Number(rollup.avg_mem_gib)   : dailyRows.reduce((s, r) => s + r.avgMemGiB, 0)   / dailyRows.length;
+  const sampleCount  = rollup ? Number(rollup.sample_count)  : dailyRows.reduce((s, r) => s + r.sampleCount, 0);
+
+  const peakRow = dailyRows.reduce<DailyReportRow | null>(
+    (max, r) => (max === null || r.dailyCost > max.dailyCost ? r : max),
+    null,
+  );
+
+  return {
+    entityRef,
+    month,
+    hasDailyBreakdown: dailyRows.length > 0,
+    dailyRows,
+    summary: {
+      totalCost,
+      avgDailyCost: dailyRows.length > 0 ? totalCost / dailyRows.length : totalCost / 30,
+      peakDate: peakRow?.date ?? null,
+      peakCost: peakRow?.dailyCost ?? 0,
+      avgCpuCores,
+      avgMemGiB,
+      sampleCount,
+    },
+  };
+}
+
 export async function pruneOldSnapshots(
   knex: Knex,
   retentionDays: number,

@@ -6,7 +6,7 @@ import { Knex } from 'knex';
 import { PrometheusClient } from './prometheusClient';
 import { CostCalculator } from './costCalculator';
 import { MeteringConfig, CostResult } from './types';
-import { getHistory } from './database';
+import { getHistory, getAvailableMonths, getMonthlyReport } from './database';
 
 function parsePosInt(val: unknown, fallback: number): number {
   const n = parseInt(String(val), 10);
@@ -97,6 +97,32 @@ export function createRouter(
         memGiB: s.memGiB,
       })),
     );
+  });
+
+  // Story 7.1 — months that have data, newest first
+  router.get('/available-months', async (req: Request, res: Response) => {
+    const { entityRef } = req.query as Record<string, string>;
+    if (!entityRef) {
+      res.status(400).json({ error: 'Missing required query param: entityRef' });
+      return;
+    }
+    const months = await getAvailableMonths(knex, entityRef);
+    res.json(months);
+  });
+
+  // Story 7.2 — daily breakdown + monthly summary for a given month
+  router.get('/report', async (req: Request, res: Response) => {
+    const { entityRef, month } = req.query as Record<string, string>;
+    if (!entityRef || !month) {
+      res.status(400).json({ error: 'Missing required query params: entityRef and month' });
+      return;
+    }
+    if (!/^\d{4}-\d{2}$/.test(month)) {
+      res.status(400).json({ error: 'month must be in YYYY-MM format' });
+      return;
+    }
+    const report = await getMonthlyReport(knex, entityRef, month);
+    res.json(report);
   });
 
   return router;
