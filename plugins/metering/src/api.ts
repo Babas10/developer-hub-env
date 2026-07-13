@@ -39,6 +39,38 @@ export interface CostHistoryPoint {
   memGiB: number;
 }
 
+export interface AvailableMonth {
+  month: string;       // "YYYY-MM"
+  hasDailyData: boolean;
+}
+
+export interface DailyReportRow {
+  date: string;
+  avgCpuCores: number;
+  avgMemGiB: number;
+  avgGpuCount: number;
+  dailyCost: number;
+  sampleCount: number;
+}
+
+export interface MonthlyReportSummary {
+  totalCost: number;
+  avgDailyCost: number;
+  peakDate: string | null;
+  peakCost: number;
+  avgCpuCores: number;
+  avgMemGiB: number;
+  sampleCount: number;
+}
+
+export interface MonthlyReport {
+  entityRef: string;
+  month: string;
+  hasDailyBreakdown: boolean;
+  dailyRows: DailyReportRow[];
+  summary: MonthlyReportSummary | null;
+}
+
 export interface MeteringApi {
   getCost(params: {
     namespace: string;
@@ -51,6 +83,15 @@ export interface MeteringApi {
     entityRef: string;
     days?: number;
   }): Promise<CostHistoryPoint[]>;
+
+  getAvailableMonths(params: {
+    entityRef: string;
+  }): Promise<AvailableMonth[]>;
+
+  getMonthlyReport(params: {
+    entityRef: string;
+    month: string;
+  }): Promise<MonthlyReport>;
 }
 
 export const meteringApiRef = createApiRef<MeteringApi>({
@@ -109,6 +150,26 @@ class MeteringClient implements MeteringApi {
       throw new Error(
         `Metering history API error (${res.status}): ${await res.text()}`,
       );
+    }
+    return res.json();
+  }
+
+  async getAvailableMonths(params: { entityRef: string }): Promise<AvailableMonth[]> {
+    const base = await this.getBaseUrl();
+    const qs = new URLSearchParams({ entityRef: params.entityRef });
+    const res = await this.fetchApi.fetch(`${base}/available-months?${qs}`);
+    if (!res.ok) {
+      throw new Error(`Metering API error (${res.status}): ${await res.text()}`);
+    }
+    return res.json();
+  }
+
+  async getMonthlyReport(params: { entityRef: string; month: string }): Promise<MonthlyReport> {
+    const base = await this.getBaseUrl();
+    const qs = new URLSearchParams({ entityRef: params.entityRef, month: params.month });
+    const res = await this.fetchApi.fetch(`${base}/report?${qs}`);
+    if (!res.ok) {
+      throw new Error(`Metering API error (${res.status}): ${await res.text()}`);
     }
     return res.json();
   }
