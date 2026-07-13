@@ -124,50 +124,68 @@ function exportPdf(report: MonthlyReport, entityRef: string): void {
 
   // ── KPI cards ─────────────────────────────────────────────────────────
   if (report.summary) {
-    const kpis = [
+    // Two rows of 3 cards:
+    //   Row 1 (financial): Total Cost | Avg Daily Cost | Peak Day
+    //   Row 2 (resources): Avg CPU    | Avg Memory     | Data Points
+    const row1: Array<{ label: string; value: string; sub?: string }> = [
       { label: 'Total Cost',     value: `$${report.summary.totalCost.toFixed(2)}` },
       { label: 'Avg Daily Cost', value: `$${report.summary.avgDailyCost.toFixed(2)}` },
-      { label: 'Peak Day',       value: report.summary.peakDate
-          ? `${report.summary.peakDate.slice(5)}\n$${report.summary.peakCost.toFixed(2)}`
-          : 'N/A' },
-      { label: 'Data Points',    value: String(report.summary.sampleCount) },
+      { label: 'Peak Day',
+        value: report.summary.peakDate ? report.summary.peakDate.slice(5) : 'N/A',
+        sub:   report.summary.peakDate ? `$${report.summary.peakCost.toFixed(2)}` : undefined },
+    ];
+    const row2: Array<{ label: string; value: string; sub?: string }> = [
+      { label: 'Avg CPU',      value: `${report.summary.avgCpuCores.toFixed(3)}`, sub: 'cores' },
+      { label: 'Avg Memory',   value: `${report.summary.avgMemGiB.toFixed(3)}`,   sub: 'GiB' },
+      { label: 'Data Points',  value: String(report.summary.sampleCount) },
     ];
 
-    const cardW = (pageW - margin * 2 - 6) / kpis.length;
-    const cardH = 24;
+    const colCount = 3;
+    const gap = 3;
+    const cardW = (pageW - margin * 2 - gap * (colCount - 1)) / colCount;
+    const cardH = 26;
 
-    kpis.forEach((kpi, i) => {
-      const x = margin + i * (cardW + 2);
-      doc.setFillColor(240, 246, 255);
-      doc.setDrawColor(25, 118, 210);
-      doc.roundedRect(x, y, cardW, cardH, 2, 2, 'FD');
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(13);
-      doc.setTextColor(25, 118, 210);
-      doc.text(kpi.value.split('\n')[0], x + cardW / 2, y + 10, { align: 'center' });
-      if (kpi.value.includes('\n')) {
-        doc.setFontSize(10);
-        doc.text(kpi.value.split('\n')[1], x + cardW / 2, y + 17, { align: 'center' });
-      }
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(8);
-      doc.setTextColor(100);
-      doc.text(kpi.label, x + cardW / 2, y + cardH - 3, { align: 'center' });
-    });
+    const drawCardRow = (
+      cards: Array<{ label: string; value: string; sub?: string }>,
+      rowY: number,
+      fillColor: [number, number, number],
+      textColor: [number, number, number],
+    ) => {
+      cards.forEach((card, i) => {
+        const x = margin + i * (cardW + gap);
+        doc.setFillColor(fillColor[0], fillColor[1], fillColor[2]);
+        doc.setDrawColor(25, 118, 210);
+        doc.roundedRect(x, rowY, cardW, cardH, 2, 2, 'FD');
 
-    doc.setTextColor(0);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(13);
+        doc.setTextColor(textColor[0], textColor[1], textColor[2]);
+        const valY = card.sub ? rowY + 9 : rowY + 12;
+        doc.text(card.value, x + cardW / 2, valY, { align: 'center' });
+
+        if (card.sub) {
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(9);
+          doc.setTextColor(textColor[0], textColor[1], textColor[2]);
+          doc.text(card.sub, x + cardW / 2, rowY + 16, { align: 'center' });
+        }
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8);
+        doc.setTextColor(100);
+        doc.text(card.label, x + cardW / 2, rowY + cardH - 3, { align: 'center' });
+      });
+    };
+
+    // Row 1 — financial (blue accent)
+    drawCardRow(row1, y, [240, 246, 255], [25, 118, 210]);
+    y += cardH + 4;
+
+    // Row 2 — resource (teal accent)
+    drawCardRow(row2, y, [240, 250, 244], [56, 142, 60]);
     y += cardH + 10;
 
-    // Secondary summary row
-    doc.setFontSize(9);
-    doc.setTextColor(80);
-    doc.text(
-      `Avg CPU: ${report.summary.avgCpuCores.toFixed(3)} cores   ` +
-      `Avg Mem: ${report.summary.avgMemGiB.toFixed(3)} GiB`,
-      margin, y,
-    );
     doc.setTextColor(0);
-    y += 8;
   }
 
   // ── Daily breakdown table ─────────────────────────────────────────────
