@@ -92,6 +92,7 @@ export function createRouter(
       history.map(s => ({
         sampledAt: s.sampledAt.toISOString(),
         hourlyCost: s.hourlyCost,
+        totalCost: s.totalCost,
         cpuCores: s.cpuCores,
         memGiB: s.memGiB,
       })),

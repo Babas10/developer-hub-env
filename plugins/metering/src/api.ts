@@ -32,6 +32,9 @@ export interface CostResult {
 export interface CostHistoryPoint {
   sampledAt: string;
   hourlyCost: number;
+  /** Actual total cost for this period: monthly sum for rollup rows,
+   *  equals hourlyCost for raw hourly snapshot rows. */
+  totalCost: number;
   cpuCores: number;
   memGiB: number;
 }

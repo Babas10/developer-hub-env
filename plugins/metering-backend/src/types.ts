@@ -72,6 +72,10 @@ export interface CostSnapshot {
   cpuCores: number;
   memGiB: number;
   hourlyCost: number;
+  /** For monthly rollup rows: the actual sum of all hourly costs for that month.
+   *  For raw hourly snapshot rows: equals hourlyCost (cost for that single hour).
+   *  Used by the frontend to plot a meaningful "total monthly cost" series. */
+  totalCost: number;
   gpuCount: number;
   gpuCost: number;
   sampledAt: Date;

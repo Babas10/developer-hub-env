@@ -53,7 +53,7 @@ export async function runMigrations(knex: Knex): Promise<void> {
 
 export async function insertSnapshot(
   knex: Knex,
-  snapshot: Omit<CostSnapshot, 'id' | 'sampledAt'>,
+  snapshot: Omit<CostSnapshot, 'id' | 'sampledAt' | 'totalCost'>,
 ): Promise<void> {
   await knex('cost_snapshots').insert({
     entity_ref: snapshot.entityRef,
@@ -115,6 +115,7 @@ export async function getHistory(
       cpuCores: r.cpu_cores,
       memGiB: r.mem_gib,
       hourlyCost: r.hourly_cost,
+      totalCost: r.hourly_cost,  // one hour's worth
       gpuCount: r.gpu_count ?? 0,
       gpuCost: r.gpu_cost ?? 0,
       sampledAt: new Date(r.sampled_at),
@@ -149,6 +150,7 @@ export async function getHistory(
       cpuCores: r.avg_cpu_cores,
       memGiB: r.avg_mem_gib,
       hourlyCost: r.sample_count > 0 ? r.total_cost / r.sample_count : 0,
+      totalCost: r.total_cost,  // actual monthly total — NOT divided by sample count
       gpuCount: r.avg_gpu_count ?? 0,
       gpuCost: 0,
       sampledAt: new Date(r.month_start),
