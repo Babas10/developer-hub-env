@@ -1,0 +1,21 @@
+---
+# Grant the backstage-demo pod's default service account read access to
+# OpenShift cluster monitoring (Prometheus).
+#
+# Unlike RHDH, standard Backstage does NOT set automountServiceAccountToken: false,
+# so the projected SA token at /var/run/secrets/kubernetes.io/serviceaccount/token
+# is available to the pod. The metering plugin's PrometheusClient reads that file
+# automatically when no explicit bearerToken is configured — no sealed-secret or
+# manual token creation needed.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: backstage-demo-cluster-monitoring-view
+subjects:
+  - kind: ServiceAccount
+    name: default
+    namespace: backstage-demo
+roleRef:
+  kind: ClusterRole
+  name: cluster-monitoring-view
+  apiGroup: rbac.authorization.k8s.io
