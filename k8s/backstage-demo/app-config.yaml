@@ -18,9 +18,13 @@ data:
         connection: ':memory:'
 
     auth:
-      environment: production
+      # dangerouslyAllowOutsideDevelopment is required for the guest
+      # provider to issue tokens outside of localhost. Without it,
+      # all catalog API calls return 401 Unauthorized.
+      environment: development
       providers:
-        guest: {}
+        guest:
+          dangerouslyAllowOutsideDevelopment: true
 
     # Metering plugin — prometheusUrl is required by the plugin schema.
     metering:
