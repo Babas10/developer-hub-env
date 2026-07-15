@@ -21,3 +21,17 @@ data:
       environment: production
       providers:
         guest: {}
+
+    # Metering plugin — prometheusUrl is required by the plugin schema.
+    # The cluster-internal URL is not a secret so it lives here in the ConfigMap.
+    # Queries will return 401 without a bearer token but the pod starts cleanly.
+    metering:
+      prometheusUrl: https://prometheus-k8s.openshift-monitoring.svc:9091
+      chargeMode: max
+      windowHours: 24
+      retentionDays: 90
+      rollupAfterDays: 30
+      costModel:
+        cpuCostPerCorePerHour: 0.048
+        memoryCostPerGBPerHour: 0.006
+        gpuCostPerGpuPerHour: 0
