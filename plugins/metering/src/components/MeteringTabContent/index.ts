@@ -1,1 +1,0 @@
-export { MeteringTabContent } from './MeteringTabContent';

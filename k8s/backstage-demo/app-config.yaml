@@ -1,0 +1,23 @@
+---
+# app-config.production.yaml overlay for the cluster deployment.
+# Sensitive values come from the backstage-demo-secrets Secret (below).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backstage-demo-config
+  namespace: backstage-demo
+data:
+  app-config.production.yaml: |
+    app:
+      baseUrl: https://backstage-demo-backstage-demo.apps.${CLUSTER_DOMAIN}
+
+    backend:
+      baseUrl: https://backstage-demo-backstage-demo.apps.${CLUSTER_DOMAIN}
+      database:
+        client: better-sqlite3
+        connection: ':memory:'
+
+    auth:
+      environment: production
+      providers:
+        guest: {}
