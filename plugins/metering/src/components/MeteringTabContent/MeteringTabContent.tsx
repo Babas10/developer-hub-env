@@ -21,6 +21,7 @@ import { UtilizationBar } from './UtilizationBar';
 import { AverageCard } from './AverageCard';
 import { CostDonut } from './CostDonut';
 import { CostTrendChart } from './CostTrendChart';
+import { ReportDrawer } from './ReportDrawer';
 
 type WindowOption = { label: string; hours: number };
 const WINDOW_OPTIONS: WindowOption[] = [
@@ -36,7 +37,7 @@ const WINDOW_OPTIONS: WindowOption[] = [
  */
 export function MeteringTabContent() {
   const [windowHours, setWindowHours] = useState(24);
-  const { namespace, deployment, costState, historyState, averages } =
+  const { namespace, deployment, entityRef, costState, historyState, averages } =
     useMeteringData(windowHours);
 
   if (!namespace) {
@@ -56,7 +57,8 @@ export function MeteringTabContent() {
           <Typography variant="subtitle1" color="textSecondary">
             {namespace}/{deployment}
           </Typography>
-          <ButtonGroup size="small" aria-label="cost averaging window">
+          <ReportDrawer entityRef={entityRef} />
+          <ButtonGroup size="small" aria-label="cost averaging window" style={{ marginLeft: 8 }}>
             {WINDOW_OPTIONS.map(opt => (
               <Button
                 key={opt.hours}
