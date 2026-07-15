@@ -1,0 +1,73 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backstage-demo
+  namespace: backstage-demo
+  labels:
+    app: backstage-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: backstage-demo
+  template:
+    metadata:
+      labels:
+        app: backstage-demo
+    spec:
+      # OpenShift-compatible: no specific UID, relies on anyuid or restricted SCC
+      containers:
+        - name: backstage
+          # Image is built by github.com/Babas10/backstage-demo CI pipeline.
+          # Update the tag here to trigger ArgoCD sync → pod rebuild.
+          # This tag update is itself part of the "slow path" demo —
+          # it represents the end of a 15-45 minute CI pipeline run.
+          image: quay.io/edubois10/backstage-demo:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 7007
+          env:
+            - name: APP_BASE_URL
+              value: ""  # Set by app-config ConfigMap
+            - name: BACKEND_BASE_URL
+              value: ""  # Set by app-config ConfigMap
+            - name: PROMETHEUS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: backstage-demo-secrets
+                  key: PROMETHEUS_URL
+                  optional: true
+            - name: METERING_PROMETHEUS_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: backstage-demo-secrets
+                  key: METERING_PROMETHEUS_TOKEN
+                  optional: true
+          volumeMounts:
+            - name: app-config
+              mountPath: /app/app-config.production.yaml
+              subPath: app-config.production.yaml
+          resources:
+            requests:
+              cpu: 200m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          livenessProbe:
+            httpGet:
+              path: /.backstage/health/v1/liveness
+              port: 7007
+            initialDelaySeconds: 60
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /.backstage/health/v1/readiness
+              port: 7007
+            initialDelaySeconds: 30
+            periodSeconds: 10
+      volumes:
+        - name: app-config
+          configMap:
+            name: backstage-demo-config

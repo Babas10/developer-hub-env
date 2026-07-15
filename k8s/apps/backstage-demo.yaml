@@ -1,0 +1,38 @@
+---
+# ArgoCD Application — Backstage Demo
+#
+# Wave 5 — deployed after all RHDH components are healthy.
+# The Backstage image is built by the GitHub Actions pipeline in
+# github.com/Babas10/backstage-demo and pushed to quay.io/edubois10/backstage-demo.
+# Update the image tag in k8s/backstage-demo/deployment.yaml to deploy a new version.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: backstage-demo
+  namespace: openshift-gitops
+  labels:
+    app: backstage-demo
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/Babas10/developer-hub-env
+    targetRevision: main
+    path: k8s/backstage-demo
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: backstage-demo
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 30s
+        factor: 2
+        maxDuration: 5m
