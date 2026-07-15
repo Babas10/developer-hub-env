@@ -23,6 +23,15 @@ spec:
   destination:
     server: https://kubernetes.default.svc
     namespace: backstage-demo
+  # ArgoCD cannot resolve the OpenShift Route CRD schema for structured diff,
+  # which blocks all syncs. Ignoring diff on Route resources lets ArgoCD sync
+  # the rest of the manifests (ConfigMap, Deployment, Service) cleanly.
+  ignoreDifferences:
+    - group: route.openshift.io
+      kind: Route
+      jsonPointers:
+        - /spec/host
+
   syncPolicy:
     automated:
       prune: true
