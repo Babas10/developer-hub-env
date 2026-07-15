@@ -16,6 +16,10 @@ data:
       database:
         client: better-sqlite3
         connection: ':memory:'
+      auth:
+        # Disable backend auth enforcement for demo — lets the
+        # frontend call APIs without a fully configured token pipeline.
+        dangerouslyDisableDefaultAuthPolicy: true
 
     auth:
       # dangerouslyAllowOutsideDevelopment is required for the guest
