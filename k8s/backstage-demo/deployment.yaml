@@ -32,6 +32,12 @@ spec:
               value: ""  # Set by app-config ConfigMap
             - name: BACKEND_BASE_URL
               value: ""  # Set by app-config ConfigMap
+            # The node:22-bookworm-slim base image does not include the
+            # OpenShift cluster CA, so Node.js rejects the self-signed TLS
+            # cert on prometheus-k8s:9091 with "fetch failed". Disabling
+            # TLS verification is acceptable for this demo deployment.
+            - name: NODE_TLS_REJECT_UNAUTHORIZED
+              value: "0"
             - name: PROMETHEUS_URL
               valueFrom:
                 secretKeyRef:
