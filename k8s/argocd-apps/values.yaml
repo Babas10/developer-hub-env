@@ -65,7 +65,7 @@ apps:
 
   # ── Wave 2: Operators ──────────────────────────────────────────────────────
   developer-hub-operator:
-    enabled: false                                  # ($) temporarily disabled — OLM v1 workaround in progress
+    enabled: true                                   # ($) uses rhdh-fast-ci catalog source (OLM v1 workaround)
     wave: "2"
     project: default
     namespace: rhdh-operator

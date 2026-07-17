@@ -1,0 +1,17 @@
+---
+# CatalogSource for RHDH on OpenShift 4.22+ (OLM v1 environment).
+# The redhat-operators catalog no longer includes the 'rhdh' package on OLM v1 clusters.
+# This CatalogSource points to the RHDH CI build index image for the matching OCP version.
+apiVersion: operators.coreos.com/v1alpha1
+kind: CatalogSource
+metadata:
+  name: rhdh-fast-ci
+  namespace: openshift-marketplace
+spec:
+  sourceType: grpc
+  image: quay.io/rhdh/iib:latest-v4.22-x86_64
+  displayName: RHDH Fast CI Build (1.10)
+  publisher: Red Hat
+  updateStrategy:
+    registryPoll:
+      interval: 10m

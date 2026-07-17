@@ -8,5 +8,5 @@ spec:
   channel: fast
   installPlanApproval: Automatic
   name: rhdh
-  source: redhat-operators
+  source: rhdh-fast-ci
   sourceNamespace: openshift-marketplace
