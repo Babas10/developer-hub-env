@@ -65,7 +65,7 @@ apps:
 
   # ── Wave 2: Operators ──────────────────────────────────────────────────────
   developer-hub-operator:
-    enabled: true                                   # ($) required for RHDH
+    enabled: false                                  # ($) temporarily disabled — OLM v1 workaround in progress
     wave: "2"
     project: default
     namespace: rhdh-operator
