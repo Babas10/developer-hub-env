@@ -1,0 +1,47 @@
+# cluster-profile.yaml — Application switches for the ArgoCD app-of-apps.
+#
+# Usage:
+#   ./scripts/apply-profile.sh          # apply switches to the cluster
+#   ./scripts/apply-profile.sh --dry-run  # preview without applying
+#
+# How it works:
+#   true  → ArgoCD Application CR is created/kept on the cluster
+#   false → ArgoCD Application CR is deleted from the cluster (definition
+#           stays safely in git — re-enable any time by setting back to true)
+#
+# Useful for personal/lab clusters where you want to control resource usage
+# without modifying git history on every toggle.
+
+apps:
+
+  # ── Wave 1: Infrastructure (always on) ─────────────────────────────────
+  sealed-secrets: true
+  argocd-config: true
+
+  # ── Wave 2: Operators ──────────────────────────────────────────────────
+  developer-hub-operator: true
+  keycloak-operator: true
+
+  # Optional operators — disable to save cluster resources
+  pipelines-operator: false       # Tekton — only needed for CI/CD demos
+  rhoai: false                    # Red Hat OpenShift AI — very large footprint
+
+  # ── Wave 3: Core instances ─────────────────────────────────────────────
+  developer-hub-instance: true
+  keycloak-instance: true
+
+  # ── Wave 5: Demo / optional apps ───────────────────────────────────────
+  # These are cheap to turn off when not actively demoing.
+  demo-stopwatch: false
+  demo-todo: false
+  demo-todo-pipeline: false
+
+  resource-burner: false          # CPU/mem load generator — leave off unless
+                                  # actively testing the metering plugin
+
+  backstage-demo: false           # Needs full 1 GB+ image rebuild to update;
+                                  # enable only when running the RHDH vs
+                                  # Backstage comparison demo
+
+  ollama: false                   # GPU workload — disable unless GPU nodes
+                                  # are available on the cluster
