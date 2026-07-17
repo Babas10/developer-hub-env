@@ -20,13 +20,16 @@ spec:
   source:
     repoURL: https://github.com/Babas10/developer-hub-env
     targetRevision: main
-    path: k8s/apps
+    path: k8s/argocd-apps          # Helm umbrella chart — edit values.yaml to toggle apps
+    helm:
+      valueFiles:
+        - values.yaml
   destination:
     server: https://kubernetes.default.svc
     namespace: openshift-gitops
   syncPolicy:
     automated:
-      prune: true
+      prune: true                   # removes Application CRs for disabled apps automatically
       selfHeal: true
     syncOptions:
       - CreateNamespace=true

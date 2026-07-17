@@ -1,0 +1,63 @@
+{{/* Generate one ArgoCD Application CR per enabled app */}}
+{{- range $name, $app := .Values.apps }}
+{{- if $app.enabled }}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ $name }}
+  namespace: {{ $.Values.global.argocdNamespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: {{ $app.wave | default "5" | quote }}
+spec:
+  project: {{ $app.project | default "default" }}
+
+  source:
+    {{- if $app.source.repoURL }}
+    repoURL: {{ $app.source.repoURL }}
+    {{- else }}
+    repoURL: {{ $.Values.global.repoURL }}
+    {{- end }}
+    targetRevision: {{ $.Values.global.targetRevision }}
+    path: {{ $app.source.path }}
+    {{- if $app.source.helm }}
+    helm:
+      {{- if $app.source.helm.releaseName }}
+      releaseName: {{ $app.source.helm.releaseName }}
+      {{- end }}
+      {{- if $app.source.helm.valueFiles }}
+      valueFiles:
+        {{- range $app.source.helm.valueFiles }}
+        - {{ . }}
+        {{- end }}
+      {{- end }}
+      {{- if $app.source.helm.valuesObject }}
+      valuesObject:
+        {{- toYaml $app.source.helm.valuesObject | nindent 8 }}
+      {{- end }}
+    {{- end }}
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: {{ $app.namespace }}
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    {{- if $app.syncOptions }}
+    syncOptions:
+      {{- range $app.syncOptions }}
+      - {{ . }}
+      {{- end }}
+    {{- end }}
+    {{- if $app.retry }}
+    retry:
+      limit: {{ $app.retry.limit | default 5 }}
+      backoff:
+        duration: 30s
+        factor: 2
+        maxDuration: {{ $app.retry.maxDuration | default "5m" }}
+    {{- end }}
+{{- end }}
+{{- end }}

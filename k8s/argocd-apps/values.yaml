@@ -1,0 +1,189 @@
+# =============================================================================
+# Cluster profile — application switches
+# =============================================================================
+# Set enabled: true/false to turn ArgoCD applications on or off.
+# Push to git → ArgoCD auto-syncs → Application CR created or pruned.
+#
+# Resource cost guide:
+#   (free)   — negligible, runs on any cluster
+#   ($)      — small overhead (~1-2 pods)
+#   ($$)     — moderate resources (~256 Mi–1 Gi RAM)
+#   ($$$)    — heavy (~2-8 Gi RAM, may need specific node types)
+# =============================================================================
+
+global:
+  repoURL: https://github.com/Babas10/developer-hub-env
+  targetRevision: main
+  argocdNamespace: openshift-gitops
+
+# AppProject for demo apps — always created when any demo app is enabled.
+# Controls which repos/namespaces the apps-demo project can reach.
+appProject:
+  enabled: true
+  name: apps-demo
+  description: Demo applications for RHDH showcase
+  sourceRepos:
+    - https://github.com/Babas10/demo-stopwatch
+    - https://github.com/Babas10/demo-todo
+    - https://github.com/Babas10/developer-hub-env
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: agent-apps
+  clusterResourceWhitelist:
+    - group: ''
+      kind: Namespace
+
+# =============================================================================
+# Applications
+# =============================================================================
+apps:
+
+  # ── Wave 1: Infrastructure ─────────────────────────────────────────────────
+  sealed-secrets:
+    enabled: true                                   # (free) required for secrets
+    wave: "1"
+    project: default
+    namespace: sealed-secrets
+    source:
+      path: charts/sealed-secrets
+      helm:
+        releaseName: sealed-secrets
+        valuesObject:
+          fullnameOverride: sealed-secrets-controller
+          keyrenewperiod: "0"
+    syncOptions: [CreateNamespace=true]
+
+  argocd-config:
+    enabled: true                                   # (free) ArgoCD self-management
+    wave: "1"
+    project: default
+    namespace: openshift-gitops
+    source:
+      path: k8s/argocd
+    syncOptions: [CreateNamespace=true, ServerSideApply=true]
+    retry: {limit: 5, maxDuration: 5m}
+
+  # ── Wave 2: Operators ──────────────────────────────────────────────────────
+  developer-hub-operator:
+    enabled: true                                   # ($) required for RHDH
+    wave: "2"
+    project: default
+    namespace: rhdh-operator
+    source:
+      path: k8s/developer-hub/operator
+    syncOptions: [CreateNamespace=true, ServerSideApply=true]
+    retry: {limit: 10, maxDuration: 10m}
+
+  keycloak-operator:
+    enabled: true                                   # ($) required for SSO
+    wave: "2"
+    project: default
+    namespace: rhbk-operator
+    source:
+      path: k8s/keycloak/operator
+    syncOptions: [CreateNamespace=true, ServerSideApply=true]
+    retry: {limit: 10, maxDuration: 10m}
+
+  pipelines-operator:
+    enabled: false                                  # ($) Tekton — only for CI demos
+    wave: "2"
+    project: default
+    namespace: openshift-operators
+    source:
+      path: k8s/pipelines/operator
+    syncOptions: [CreateNamespace=true]
+
+  rhoai:
+    enabled: false                                  # ($$$) Red Hat OpenShift AI
+    wave: "2"                                       # very large footprint
+    project: default
+    namespace: redhat-ods-operator
+    source:
+      path: k8s/rhoai
+    syncOptions: [CreateNamespace=true, ServerSideApply=true]
+
+  # ── Wave 3: Core instances ─────────────────────────────────────────────────
+  developer-hub-instance:
+    enabled: true                                   # ($$) RHDH itself
+    wave: "3"
+    project: default
+    namespace: developer-hub
+    source:
+      path: k8s/developer-hub/instance
+    syncOptions: [CreateNamespace=true, ServerSideApply=true]
+    retry: {limit: 15, maxDuration: 15m}
+
+  keycloak-instance:
+    enabled: true                                   # ($$) Keycloak SSO
+    wave: "3"
+    project: default
+    namespace: keycloak
+    source:
+      path: k8s/keycloak/instance
+    syncOptions: [CreateNamespace=true, ServerSideApply=true]
+    retry: {limit: 15, maxDuration: 15m}
+
+  # ── Wave 5: Demo & optional apps ───────────────────────────────────────────
+  demo-stopwatch:
+    enabled: false                                  # (free) lightweight demo app
+    wave: "5"
+    project: apps-demo
+    namespace: agent-apps
+    source:
+      repoURL: https://github.com/Babas10/demo-stopwatch
+      path: helm
+      helm:
+        valueFiles: [values.yaml]
+    syncOptions: [CreateNamespace=true, ServerSideApply=true]
+    retry: {limit: 5, maxDuration: 5m}
+
+  demo-todo:
+    enabled: false                                  # (free) lightweight demo app
+    wave: "5"
+    project: apps-demo
+    namespace: agent-apps
+    source:
+      repoURL: https://github.com/Babas10/demo-todo
+      path: helm
+      helm:
+        valueFiles: [values.yaml]
+    syncOptions: [CreateNamespace=true, ServerSideApply=true]
+    retry: {limit: 5, maxDuration: 5m}
+
+  demo-todo-pipeline:
+    enabled: false                                  # (free) Tekton pipeline demo
+    wave: "5"
+    project: apps-demo
+    namespace: agent-apps
+    source:
+      path: k8s/pipelines/demo-todo
+    syncOptions: [CreateNamespace=true]
+
+  resource-burner:
+    enabled: false                                  # ($$) CPU/mem load generator
+    wave: "5"                                       # enable only for metering tests
+    project: apps-demo
+    namespace: agent-apps
+    source:
+      path: k8s/resource-burner
+    syncOptions: [CreateNamespace=true, ServerSideApply=true]
+    retry: {limit: 5, maxDuration: 5m}
+
+  backstage-demo:
+    enabled: false                                  # ($$) Standard Backstage instance
+    wave: "5"                                       # enable only for RHDH vs Backstage demo
+    project: default
+    namespace: backstage-demo
+    source:
+      path: k8s/backstage-demo
+    syncOptions: [CreateNamespace=true]
+    retry: {limit: 5, maxDuration: 5m}
+
+  ollama:
+    enabled: false                                  # ($$$) GPU LLM server
+    wave: "5"                                       # needs GPU nodes or runs on CPU (slow)
+    project: default
+    namespace: ai-agentic
+    source:
+      path: k8s/ollama
+    syncOptions: [CreateNamespace=true]

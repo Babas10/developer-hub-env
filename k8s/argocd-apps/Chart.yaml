@@ -1,0 +1,8 @@
+apiVersion: v2
+name: argocd-apps
+description: >
+  Umbrella Helm chart that generates all ArgoCD Application CRs for the
+  developer-hub-env environment. Toggle apps on/off by setting enabled: true/false
+  in values.yaml — ArgoCD will create or prune the Application CR automatically.
+type: application
+version: 0.1.0
