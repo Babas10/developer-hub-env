@@ -85,7 +85,7 @@ apps:
     retry: {limit: 10, maxDuration: 10m}
 
   pipelines-operator:
-    enabled: false                                  # ($) Tekton — only for CI demos
+    enabled: true                                   # ($) Tekton — only for CI demos
     wave: "2"
     project: default
     namespace: openshift-operators
