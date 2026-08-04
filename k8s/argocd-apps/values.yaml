@@ -12,7 +12,7 @@
 # =============================================================================
 
 global:
-  repoURL: https://github.com/Babas10/developer-hub-env
+  repoURL: git@github.com:Babas10/platform
   targetRevision: main
   argocdNamespace: openshift-gitops
 
@@ -25,7 +25,7 @@ appProject:
   sourceRepos:
     - https://github.com/Babas10/demo-stopwatch
     - https://github.com/Babas10/demo-todo
-    - https://github.com/Babas10/developer-hub-env
+    - git@github.com:Babas10/platform
   destinations:
     - server: https://kubernetes.default.svc
       namespace: agent-apps

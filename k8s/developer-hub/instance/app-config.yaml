@@ -88,15 +88,15 @@ data:
     catalog:
       locations:
         - type: url
-          target: https://github.com/Babas10/developer-hub-env/blob/main/catalog/demo-stopwatch.yaml
+          target: git@github.com:Babas10/platform/blob/main/catalog/demo-stopwatch.yaml
           rules:
             - allow: [Component]
         - type: url
-          target: https://github.com/Babas10/developer-hub-env/blob/main/catalog/demo-todo.yaml
+          target: git@github.com:Babas10/platform/blob/main/catalog/demo-todo.yaml
           rules:
             - allow: [Component]
         - type: url
-          target: https://github.com/Babas10/developer-hub-env/blob/main/catalog/resource-burner.yaml
+          target: git@github.com:Babas10/platform/blob/main/catalog/resource-burner.yaml
           rules:
             - allow: [Component]
       providers:
